@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCAR — THE LAST CHOICE</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Game Canvas Viewport -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- CRT Scanlines Effect Overlay -->
+  <div class="scanlines"></div>
+
+  <!-- UI Overlay Panels -->
+  <div id="uiOverlay" class="ui-overlay">
+    
+    <!-- Header Controls & HUD -->
+    <header class="cyber-header">
+      <div class="logo">SCAR <span class="sub">THE LAST CHOICE</span></div>
+      <div id="pathDisplay" class="path-badge">PATH: DORMANT</div>
+      <div id="metricsBar" class="metrics-bar">
+        <span>ENEMIES: <strong id="valEnemies">0</strong></span>
+        <span>HEALTH: <strong id="valHealth">100</strong>/100</span>
+      </div>
+    </header>
+
+    <!-- Start Screen Modal -->
+    <div id="startScreen" class="modal-card">
+      <h1 class="title">SCAR — THE LAST CHOICE</h1>
+      <p class="subtitle">KAUSTUB — GAMEPLAY / POWERS / HERO AI</p>
+      
+      <div class="story-box">
+        <p>In a city where everyone is born with supernatural abilities... <strong>You have ZERO powers</strong>.</p>
+        <p>Survive the streets of Level 1. How you fight and react will awaken your true path:</p>
+        <ul>
+          <li><span class="path-tag aggressive">AGGRESSIVE</span> → Awakens <strong>DESTRUCTION NOVA</strong></li>
+          <li><span class="path-tag protective">PROTECTIVE</span> → Awakens <strong>KINETIC BARRIER</strong></li>
+          <li><span class="path-tag strategic">STRATEGIC</span> → Awakens <strong>STASIS HACK</strong></li>
+        </ul>
+      </div>
+
+      <div class="controls-guide">
+        <span><strong>WASD / ARROWS</strong> : Move</span>
+        <span><strong>SHIFT</strong> : Sprint</span>
+        <span><strong>LEFT CLICK</strong> : Melee Attack</span>
+        <span><strong>SPACEBAR</strong> : Activate Power</span>
+      </div>
+
+      <button id="btnStart" class="cyber-button primary">START MISSION</button>
+    </div>
+
+    <!-- Scar Event Banner -->
+    <div id="scarBanner" class="banner-overlay hidden">
+      <h2 class="banner-title">CRITICAL IMPACT — THE SCAR RECEIVED</h2>
+      <p id="awakeningText" class="banner-sub">Your power awakens...</p>
+    </div>
+
+    <!-- Final Choice Modal -->
+    <div id="finalChoiceModal" class="modal-card hidden">
+      <h2 class="title">THE FINAL CONFRONTATION</h2>
+      <p class="subtitle">The Hero has fallen. The fate of the Cyber Grid rests in your hands.</p>
+      
+      <div class="choice-grid">
+        <button class="choice-btn villain" data-choice="VILLAIN">
+          <h3>BECOME THE VILLAIN</h3>
+          <p>Conquer the system with raw force and rule the city.</p>
+        </button>
+        <button class="choice-btn hero" data-choice="HERO">
+          <h3>BECOME THE HERO</h3>
+          <p>Take the fallen hero's mantle and protect the weak.</p>
+        </button>
+        <button class="choice-btn savior" data-choice="SAVIOR">
+          <h3>BECOME THE SAVIOR</h3>
+          <p>Synthesize all power paths and erase the Scar system.</p>
+        </button>
+        <button class="choice-btn human" data-choice="HUMAN">
+          <h3>BECOME HUMAN</h3>
+          <p>Renounce all awakened powers and walk away.</p>
+        </button>
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" class="modal-card hidden">
+      <h1 class="title danger">SIGNAL LOST — GAME OVER</h1>
+      <p>Your journey ended in the cyber grid.</p>
+      <button id="btnRestartGameOver" class="cyber-button secondary">RETRY MISSION</button>
+    </div>
+
+    <!-- Ending Screen & Metrics Summary -->
+    <div id="endingScreen" class="modal-card hidden">
+      <h1 class="title success">MISSION COMPLETE</h1>
+      <h2 id="finalChoiceTitle" class="subtitle">YOU BECAME THE HERO</h2>
+      
+      <div class="metrics-summary">
+        <h3>REAL GAMEPLAY METRICS</h3>
+        <div class="grid-stats">
+          <div>Time Elapsed: <strong id="statTime">0s</strong></div>
+          <div>Enemies Defeated: <strong id="statEnemies">0</strong></div>
+          <div>Power Usage Count: <strong id="statPowers">0</strong></div>
+          <div>Damage Received: <strong id="statDamage">0</strong></div>
+          <div>Dominant Path: <strong id="statPath">NONE</strong></div>
+          <div>Hero Outcome: <strong id="statHero">SPARED</strong></div>
+        </div>
+      </div>
+
+      <button id="btnRestartEnding" class="cyber-button primary">PLAY AGAIN</button>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { GameEngine, GAME_STATES } from './src/game.js';
+    import { eventBus, GAME_EVENTS } from './src/events.js';
+    import { metrics } from './src/metrics.js';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('gameCanvas');
+      const engine = new GameEngine(canvas);
+      requestAnimationFrame((t) => engine.loop(t));
+
+      const startScreen = document.getElementById('startScreen');
+      const scarBanner = document.getElementById('scarBanner');
+      const awakeningText = document.getElementById('awakeningText');
+      const finalChoiceModal = document.getElementById('finalChoiceModal');
+      const gameOverScreen = document.getElementById('gameOverScreen');
+      const endingScreen = document.getElementById('endingScreen');
+      const pathDisplay = document.getElementById('pathDisplay');
+
+      document.getElementById('btnStart').addEventListener('click', () => {
+        startScreen.classList.add('hidden');
+        engine.startGame();
+      });
+
+      document.getElementById('btnRestartGameOver').addEventListener('click', () => {
+        gameOverScreen.classList.add('hidden');
+        engine.startGame();
+      });
+
+      document.getElementById('btnRestartEnding').addEventListener('click', () => {
+        endingScreen.classList.add('hidden');
+        engine.startGame();
+      });
+
+      // Choice buttons hookup
+      document.querySelectorAll('.choice-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const choice = e.currentTarget.getAttribute('data-choice');
+          finalChoiceModal.classList.add('hidden');
+          engine.makeFinalChoice(choice);
+        });
+      });
+
+      // Event Listeners for UI state syncing
+      eventBus.on(GAME_EVENTS.POWER_AWAKENED, (payload) => {
+        pathDisplay.innerText = `PATH: ${payload.data.path}`;
+        awakeningText.innerText = `AWAKENED: ${payload.data.name} — ${payload.data.description}`;
+        scarBanner.classList.remove('hidden');
+        setTimeout(() => scarBanner.classList.add('hidden'), 3500);
+      });
+
+      eventBus.on(GAME_EVENTS.POWER_PATH_CHANGED, (payload) => {
+        pathDisplay.innerText = `PATH: ${payload.data.path}`;
+      });
+
+      eventBus.on(GAME_EVENTS.ENDING_TRIGGERED, () => {
+        finalChoiceModal.classList.remove('hidden');
+      });
+
+      eventBus.on(GAME_EVENTS.GAME_OVER, () => {
+        gameOverScreen.classList.remove('hidden');
+      });
+
+      eventBus.on(GAME_EVENTS.FINAL_CHOICE_MADE, (payload) => {
+        const summary = metrics.getSummary();
+        document.getElementById('finalChoiceTitle').innerText = `YOU BECAME THE ${payload.data.choice}`;
+        document.getElementById('statTime').innerText = `${summary.time}s`;
+        document.getElementById('statEnemies').innerText = summary.enemiesDefeated;
+        document.getElementById('statPowers').innerText = summary.powerUsage;
+        document.getElementById('statDamage').innerText = summary.damageReceived;
+        document.getElementById('statPath').innerText = summary.dominantPath;
+        document.getElementById('statHero').innerText = summary.heroResult;
+        endingScreen.classList.remove('hidden');
+      });
+
+      // Update real-time HUD stats
+      setInterval(() => {
+        document.getElementById('valEnemies').innerText = metrics.enemiesDefeated;
+        document.getElementById('valHealth').innerText = Math.round(engine.player.health);
+      }, 200);
+    });
+  </script>
+</body>
+</html>
