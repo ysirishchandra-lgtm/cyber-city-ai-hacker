@@ -127,7 +127,18 @@ namespace Scar.UI_Visuals
             
             // Visual juice on start
             StartCoroutine(ScalePunch(_startRunBtn.transform, 1.2f, 0.1f));
-            StartCoroutine(FadeOutLobby());
+            
+            // Trigger Cutscene
+            var cutsceneController = FindObjectOfType<Round1CutsceneController>();
+            if (cutsceneController != null)
+            {
+                cutsceneController.PlayCutscene(selectedCharacter.characterId);
+            }
+            else
+            {
+                // Fallback if no cutscene controller exists in scene
+                StartCoroutine(FadeOutLobby());
+            }
         }
 
         private System.Collections.IEnumerator FadeOutLobby()
@@ -145,10 +156,8 @@ namespace Scar.UI_Visuals
             }
             canvasGroup.alpha = 0f;
             
-            // Link to GameState
+            // Fallback transitions
             // GameManager.Instance.GameState.SetPlayerIdentity(..., _characters[_currentIndex].characterId);
-            
-            // Transition to Level 1
             // EventBus.Publish(new GameEvents.PhaseChangedEvent { NewPhase = GamePhase.GAMEPLAY });
         }
 

@@ -115,10 +115,17 @@ namespace Scar.UI
             }
         }
 
-        private void Update()
+        public void StartDeadlineTimer(float initialTimeInSeconds)
         {
-            UpdateGhostHealth(Time.deltaTime);
-            UpdateStaminaFromGameplay();
+            _currentDeadline = initialTimeInSeconds;
+            _isTimerActive = true;
+            if (_deadlineTimerText != null)
+            {
+                int minutes = Mathf.FloorToInt(_currentDeadline / 60F);
+                int seconds = Mathf.FloorToInt(_currentDeadline - minutes * 60);
+                _deadlineTimerText.text = string.Format("{0:0}:{1:00}", minutes, seconds);
+                _deadlineTimerText.color = _timerNormalColor;
+            }
         }
 
         private void SubscribeEvents()
