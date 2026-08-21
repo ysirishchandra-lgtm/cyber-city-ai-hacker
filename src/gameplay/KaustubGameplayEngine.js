@@ -98,12 +98,14 @@ export class KaustubGameplayEngine {
       if (!gameState.isPlaying()) return;
 
       if (e.button === 0) {
-        // Left Click = Attack (with 3-hit combo)
+        // Left Click = Light Attack (3-hit combo)
         this.player.attack(this.enemies, this.particleEffects);
       } else if (e.button === 2) {
-        // Right Click = Power activation after awakening
+        // Right Click = Power activation after awakening, or Heavy Attack
         if (gameState.hasPower()) {
           this.powerSystem.activate(this.player, this.enemies, this.particleEffects);
+        } else {
+          this.player.heavyAttack(this.enemies, this.particleEffects);
         }
       }
     });

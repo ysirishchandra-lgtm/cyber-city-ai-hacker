@@ -273,6 +273,21 @@ export class ParticleSystem {
     this.spawnStasisField(x, y, color, duration);
   }
 
+  spawnDamageNumber(x, y, damage, isCrit = false, color = '#ffffff') {
+    this.damageNumbers.push({
+      damage,
+      x: x + (Math.random() * 20 - 10),
+      y: y - 10,
+      vx: (Math.random() * 40 - 20),
+      vy: -70 - Math.random() * 30,
+      scale: isCrit ? 1.4 : 1.0,
+      isCrit,
+      color: isCrit ? '#ff0055' : color,
+      life: 0.75,
+      maxLife: 0.75,
+    });
+  }
+
   // ─── Rendering ────────────────────────────────────────────────────────────
 
   render(ctx, camera = { x: 0, y: 0 }) {

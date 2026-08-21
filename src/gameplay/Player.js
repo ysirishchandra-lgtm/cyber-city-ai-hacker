@@ -149,9 +149,10 @@ export class Player {
     this.isAttacking = true;
     this.attackAnimationTimer = 0.2;
 
-    const attackRange = 75;
+    const attackRange = 80;
     const baseDamage = 25;
     const comboMultipliers = { 1: 1.0, 2: 1.28, 3: 1.8 };
+    const isCrit = this.comboStep === 3;
     const attackDamage = Math.round(baseDamage * (comboMultipliers[this.comboStep] || 1.0));
     const attackArc = Math.PI / 2;
 
@@ -189,10 +190,73 @@ export class Player {
             hitAny = true;
             
             // Knockback on hit, extra knockback on 3rd combo finisher
-            const knockbackDist = this.comboStep === 3 ? 45 : 25;
+            const knockbackDist = isCrit ? 45 : 25;
             enemy.x += Math.cos(this.facingAngle) * knockbackDist;
             enemy.y += Math.sin(this.facingAngle) * knockbackDist;
+
+            // Spawn floating damage numbers & impact sparks
+            import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+              particleSystem.spawnDamageNumber(enemy.x, enemy.y, attackDamage, isCrit, isCrit ? '#ff0055' : '#00ffff');
+              particleSystem.spawnImpact(enemy.x, enemy.y, isCrit ? '#ff0055' : '#00f3ff', isCrit ? 14 : 8);
+            });
+
+            // Hit-Stop feedback
+            import('../visuals/ShaderPipeline.js').then(({ shaderPipeline }) => {
+              shaderPipeline.addShake(isCrit ? 0.45 : 0.2);
+            });
           }
+        }
+      }
+    });
+
+    return hitAny;
+  }
+
+  heavyAttack(enemies, particleEffects) {
+    if (this.attackCooldown > 0 || KaustubAPI.isChoiceBlocking() || this.stamina < 15) return false;
+
+    this.stamina -= 15;
+    this.attackCooldown = 0.55;
+    this.isAttacking = true;
+    this.attackAnimationTimer = 0.35;
+
+    const attackRange = 110;
+    const attackDamage = 65;
+
+    if (particleEffects) {
+      particleEffects.push({
+        type: 'slash',
+        x: this.x,
+        y: this.y,
+        angle: this.facingAngle,
+        color: '#ff0033',
+        life: 0.3,
+        maxLife: 0.3
+      });
+    }
+
+    let hitAny = false;
+    enemies.forEach(enemy => {
+      if (enemy.isAlive) {
+        const dx = enemy.x - this.x;
+        const dy = enemy.y - this.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist <= attackRange) {
+          enemy.takeDamage(attackDamage, 'HEAVY');
+          hitAny = true;
+          enemy.x += Math.cos(this.facingAngle) * 60;
+          enemy.y += Math.sin(this.facingAngle) * 60;
+
+          import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+            particleSystem.spawnDamageNumber(enemy.x, enemy.y, attackDamage, true, '#ff0055');
+            particleSystem.spawnImpact(enemy.x, enemy.y, '#ff0055', 18);
+          });
+
+          import('../visuals/ShaderPipeline.js').then(({ shaderPipeline }) => {
+            shaderPipeline.addShake(0.6);
+            shaderPipeline.triggerFlash('#ff0033', 0.25);
+          });
         }
       }
     });
