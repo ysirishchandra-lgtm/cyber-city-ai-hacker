@@ -56,12 +56,32 @@ export class KaustubGameplayEngine {
         eventBus.emit(EVENTS.CLUE_DISCOVERED, { target: 'INTERACTABLE_CLUE' });
       }
 
-      if (e.key === ' ' && gameState.isPlaying()) {
+      if ((e.key === 'q' || e.key === 'Q') && gameState.isPlaying()) {
         if (gameState.hasPower()) {
           this.powerSystem.activate(this.player, this.enemies, this.particleEffects);
-        } else {
-          this.player.dodge();
         }
+      }
+
+      if ((e.key === 'r' || e.key === 'R') && gameState.isPlaying()) {
+        if (gameState.hasPower()) {
+          this.powerSystem.activate(this.player, this.enemies, this.particleEffects);
+        }
+      }
+
+      if ((e.key === 'g' || e.key === 'G') && gameState.isPlaying()) {
+        // Secret Glitch Power: Freeze all enemies in stasis
+        this.enemies.forEach(en => { en.inStasis = true; en.stasisTimer = 2.5; });
+        import('../visuals/ShaderPipeline.js').then(({ shaderPipeline }) => {
+          shaderPipeline.triggerGlitch(0.9);
+          shaderPipeline.addShake(0.6);
+        });
+        import('../visuals/AudioEngine.js').then(({ audioEngine }) => {
+          audioEngine.playPowerActivation('STRATEGIC');
+        });
+      }
+
+      if (e.key === ' ' && gameState.isPlaying()) {
+        this.player.dodge();
       }
     });
 

@@ -73,18 +73,18 @@
     .scar-hook {
       font-size: clamp(14px, 2vw, 18px);
       color: #a0aec0;
-      margin-top: 24px;
+      margin-top: 18px;
       font-style: italic;
       text-align: center;
       max-width: 520px;
-      line-height: 1.8;
+      line-height: 1.6;
     }
 
     .scar-divider {
       width: 140px;
       height: 3px;
       background: linear-gradient(90deg, transparent, #ff0033, transparent);
-      margin: 28px 0;
+      margin: 22px 0;
       box-shadow: 0 0 12px #ff0033;
     }
 
@@ -94,6 +94,7 @@
       align-items: center;
       flex-wrap: wrap;
       justify-content: center;
+      margin-bottom: 16px;
     }
 
     #player-name {
@@ -101,9 +102,9 @@
       border: 1px solid rgba(0, 243, 255, 0.4);
       color: #ffffff;
       font-family: 'Share Tech Mono', monospace;
-      font-size: 17px;
+      font-size: 16px;
       padding: 12px 20px;
-      width: 240px;
+      width: 220px;
       outline: none;
       border-radius: 6px;
       box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
@@ -115,128 +116,126 @@
       box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
     }
 
-    #btn-start {
+    .btn-cyber {
       background: linear-gradient(135deg, #ff0033 0%, #aa0022 100%);
       color: #ffffff;
       border: none;
       font-family: 'Orbitron', monospace;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
-      padding: 12px 32px;
+      padding: 12px 28px;
       cursor: pointer;
-      letter-spacing: 0.15em;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       border-radius: 6px;
       box-shadow: 0 0 20px rgba(255, 0, 51, 0.5);
       transition: all 0.2s ease;
     }
 
-    #btn-start:hover {
+    .btn-cyber:hover {
       background: linear-gradient(135deg, #ff2255 0%, #cc0033 100%);
       box-shadow: 0 0 30px rgba(255, 0, 51, 0.85);
       transform: translateY(-2px);
     }
 
+    .btn-secondary {
+      background: rgba(16, 20, 36, 0.85);
+      color: #00f3ff;
+      border: 1px solid rgba(0, 243, 255, 0.5);
+      box-shadow: 0 0 10px rgba(0, 243, 255, 0.25);
+      font-size: 13px;
+      padding: 8px 18px;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(0, 243, 255, 0.15);
+      box-shadow: 0 0 16px rgba(0, 243, 255, 0.6);
+    }
+
+    .menu-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
     .scar-note {
       font-size: 12px;
       color: #4a5568;
-      margin-top: 24px;
+      margin-top: 20px;
       text-align: center;
       font-family: 'Share Tech Mono', monospace;
-      line-height: 1.6;
+      line-height: 1.5;
     }
 
-    /* ─── Leaderboard Overlay ─── */
-    #leaderboard-overlay {
+    /* ─── Modal Overlays ─── */
+    .modal-overlay {
       position: fixed;
       inset: 0;
       background: rgba(4, 5, 10, 0.95);
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(14px);
       display: none;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      padding: 50px 20px;
+      justify-content: center;
+      padding: 30px 20px;
       z-index: 200;
-      overflow-y: auto;
     }
 
-    #leaderboard-overlay.visible { display: flex; }
+    .modal-overlay.visible { display: flex; }
 
-    #leaderboard-overlay h2 {
+    .modal-card {
+      background: rgba(10, 14, 26, 0.96);
+      border: 1px solid rgba(0, 243, 255, 0.5);
+      box-shadow: 0 0 30px rgba(0, 243, 255, 0.25);
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 600px;
+      width: 90%;
+      text-align: center;
+    }
+
+    .modal-card h2 {
       font-family: 'Orbitron', monospace;
       color: #00f3ff;
-      font-size: 32px;
-      letter-spacing: 0.2em;
-      text-shadow: 0 0 15px rgba(0, 243, 255, 0.6);
-      margin-bottom: 8px;
+      font-size: 24px;
+      letter-spacing: 0.15em;
+      margin-bottom: 16px;
+      text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
     }
 
-    #leaderboard-overlay p {
-      color: #718096;
+    .modal-card p, .modal-card li {
+      color: #cbd5e1;
       font-family: 'Share Tech Mono', monospace;
-      font-size: 14px;
-      margin-bottom: 32px;
+      font-size: 13px;
+      line-height: 1.8;
+      text-align: left;
     }
 
-    #leaderboard-list {
-      width: 100%;
-      max-width: 620px;
-      background: rgba(10, 12, 22, 0.8);
-      border: 1px solid rgba(0, 243, 255, 0.25);
-      border-radius: 8px;
-      overflow: hidden;
+    .modal-card ul {
+      list-style: none;
+      margin: 16px 0;
     }
 
+    /* ─── Leaderboard ─── */
     .lb-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 14px 24px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      color: #e2e8f0;
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       font-family: 'Share Tech Mono', monospace;
-      font-size: 15px;
     }
-
-    .lb-row:first-child { background: rgba(0, 243, 255, 0.06); }
-    .lb-rank { color: #ffb700; width: 40px; font-weight: bold; }
-    .lb-name { flex: 1; padding: 0 16px; color: #ffffff; }
-    .lb-ending { font-size: 12px; color: #a0aec0; }
-    .lb-score { color: #00ff88; font-weight: bold; font-size: 17px; }
-
-    .lb-empty {
-      color: #718096;
-      text-align: center;
-      padding: 50px;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 16px;
-    }
-
-    #btn-close-lb {
-      margin-top: 32px;
-      background: transparent;
-      border: 1px solid #4a5568;
-      color: #a0aec0;
-      font-family: 'Orbitron', monospace;
-      font-size: 14px;
-      padding: 10px 32px;
-      cursor: pointer;
-      border-radius: 6px;
-      letter-spacing: 0.15em;
-      transition: all 0.2s ease;
-    }
-
-    #btn-close-lb:hover {
-      border-color: #ff0033;
-      color: #ff0033;
-      box-shadow: 0 0 15px rgba(255, 0, 51, 0.4);
-    }
+    .lb-rank { color: #00f3ff; font-weight: bold; }
+    .lb-name { color: #ffffff; }
+    .lb-ending { color: #ffb700; }
+    .lb-score { color: #00ff88; font-weight: bold; }
+    .lb-empty { color: #64748b; padding: 20px; text-align: center; }
   </style>
 </head>
 <body>
 
-  <!-- Master Game Canvas (Full-screen WebGL / 2D Canvas) -->
+  <!-- Fullscreen WebGL Canvas -->
   <canvas id="scar-canvas"></canvas>
 
   <!-- Start Screen -->
@@ -259,31 +258,138 @@
         autocomplete="off"
         spellcheck="false"
       />
-      <button id="btn-start">ENTER CITY</button>
+      <button id="btn-start" class="btn-cyber">ENTER CITY</button>
     </div>
+
+    <!-- Additional Menu Buttons -->
+    <div class="menu-row">
+      <button id="btn-how-to-play" class="btn-cyber btn-secondary">CONTROLS & LORE</button>
+      <button id="btn-demo-selector" class="btn-cyber btn-secondary">DEMO SELECTOR</button>
+      <button id="btn-audience-vote" class="btn-cyber btn-secondary">AUDIENCE VOTE</button>
+    </div>
+
     <p class="scar-note">
       CINEMATIC THIRD-PERSON ACTION EXPERIENCE<br/>
       REAL CHOICES • DYNAMIC POWERS • MULTIPLE ENDINGS
     </p>
   </div>
 
-  <!-- Real Leaderboard Overlay -->
-  <div id="leaderboard-overlay">
-    <h2>CLASSIFIED LEADERBOARD</h2>
-    <p>Authentic records verified by cloud telemetry</p>
-    <div id="leaderboard-list">
-      <div class="lb-empty">No players yet.</div>
+  <!-- Controls & Lore Modal -->
+  <div id="controls-modal" class="modal-overlay">
+    <div class="modal-card">
+      <h2>TACTICAL PROTOCOLS</h2>
+      <ul>
+        <li>• <b>WASD / ARROW KEYS</b>: 3D Movement & Directional Stride</li>
+        <li>• <b>MOUSE MOVEMENT</b>: Over-the-Shoulder Camera Lead</li>
+        <li>• <b>LEFT CLICK</b>: 3-Hit Katana Combo Ribbon Attack</li>
+        <li>• <b>SPACE / SHIFT</b>: 360° Dodge Roll (Invulnerability)</li>
+        <li>• <b>Q / R CLICK</b>: Activate Awakened Superpower</li>
+        <li>• <b>E KEY</b>: Investigate Clues & Comms Intercept</li>
+        <li>• <b>1 / 2 / 3</b>: Select Moral Choices</li>
+        <li>• <b>ESC KEY</b>: Tactical Pause Menu</li>
+      </ul>
+      <button id="btn-close-controls" class="btn-cyber btn-secondary" style="margin-top: 15px;">RETURN</button>
     </div>
-    <button id="btn-close-lb">RETURN TO CITY</button>
+  </div>
+
+  <!-- Demo Selector Modal (For Hackathon Judges) -->
+  <div id="demo-modal" class="modal-overlay">
+    <div class="modal-card">
+      <h2>HACKATHON DEMO SELECTOR</h2>
+      <p style="text-align: center; margin-bottom: 15px;">Jump directly to any section of the game:</p>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button class="btn-cyber btn-secondary demo-jump" data-level="1">▶ LEVEL 1: THE POWERLESS</button>
+        <button class="btn-cyber btn-secondary demo-jump" data-level="1_boss">⚡ BOSS 1 & SCAR AWAKENING</button>
+        <button class="btn-cyber btn-secondary demo-jump" data-level="2">▶ LEVEL 2: EVOLUTION & MORAL CHOICES</button>
+        <button class="btn-cyber btn-secondary demo-jump" data-level="3">▶ LEVEL 3: IDENTITY & ATLAS BOSS</button>
+        <button class="btn-cyber btn-secondary demo-jump" data-level="final">🏆 FINAL CONFRONTATION & 4 ENDINGS</button>
+      </div>
+      <button id="btn-close-demo" class="btn-cyber btn-secondary" style="margin-top: 15px;">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- Audience Vote Modal (Live Hackathon Interactive Feature) -->
+  <div id="audience-modal" class="modal-overlay">
+    <div class="modal-card">
+      <h2>LIVE CROWD DECISION</h2>
+      <p style="text-align: center; margin-bottom: 15px;">AWS Cloud Voting Telemetry (Scan or Choose):</p>
+      <div style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+        <p>🔴 <b>REVENGE (Villain Path)</b>: 38%</p>
+        <p>🔵 <b>PROTECTION (Hero Path)</b>: 42%</p>
+        <p>🟢 <b>BREAK THE CYCLE (Savior Path)</b>: 20%</p>
+      </div>
+      <button id="btn-close-audience" class="btn-cyber btn-secondary">DISMISS</button>
+    </div>
+  </div>
+
+  <!-- Real Leaderboard Overlay -->
+  <div id="leaderboard-overlay" class="modal-overlay">
+    <div class="modal-card" style="max-width: 680px;">
+      <h2>CLASSIFIED LEADERBOARD</h2>
+      <p style="text-align: center; margin-bottom: 15px;">Authentic records verified by cloud telemetry</p>
+      <div id="leaderboard-list" style="max-height: 280px; overflow-y: auto; margin-bottom: 15px;">
+        <div class="lb-empty">No players yet.</div>
+      </div>
+      <button id="btn-close-lb" class="btn-cyber btn-secondary">RETURN TO CITY</button>
+    </div>
   </div>
 
   <!-- Game Script -->
   <script type="module" src="src/game.js"></script>
 
-  <!-- Leaderboard toggle -->
+  <!-- Menu Event Handlers -->
   <script type="module">
     import { eventBus } from './src/core/EventBus.js';
+    import { gameManager } from './src/integration/GameManager.js';
+    import { gameState, GAME_PHASE, POWER_PATH } from './src/core/GameState.js';
 
+    // Controls Modal
+    const btnControls = document.getElementById('btn-how-to-play');
+    const controlsModal = document.getElementById('controls-modal');
+    const btnCloseControls = document.getElementById('btn-close-controls');
+    btnControls.addEventListener('click', () => controlsModal.classList.add('visible'));
+    btnCloseControls.addEventListener('click', () => controlsModal.classList.remove('visible'));
+
+    // Audience Modal
+    const btnAudience = document.getElementById('btn-audience-vote');
+    const audienceModal = document.getElementById('audience-modal');
+    const btnCloseAudience = document.getElementById('btn-close-audience');
+    btnAudience.addEventListener('click', () => audienceModal.classList.add('visible'));
+    btnCloseAudience.addEventListener('click', () => audienceModal.classList.remove('visible'));
+
+    // Demo Modal
+    const btnDemo = document.getElementById('btn-demo-selector');
+    const demoModal = document.getElementById('demo-modal');
+    const btnCloseDemo = document.getElementById('btn-close-demo');
+    btnDemo.addEventListener('click', () => demoModal.classList.add('visible'));
+    btnCloseDemo.addEventListener('click', () => demoModal.classList.remove('visible'));
+
+    document.querySelectorAll('.demo-jump').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        demoModal.classList.remove('visible');
+        document.getElementById('start-screen').classList.add('hidden');
+        const levelTarget = btn.dataset.level;
+
+        await gameManager.startGame('judge_01', 'OPERATIVE');
+
+        if (levelTarget === '1') {
+          gameState.setPhase(GAME_PHASE.LEVEL_1);
+        } else if (levelTarget === '1_boss') {
+          gameState.setPhase(GAME_PHASE.SCAR_MOMENT);
+        } else if (levelTarget === '2') {
+          gameState.unlockPower(POWER_PATH.AGGRESSIVE);
+          gameState.setPhase(GAME_PHASE.LEVEL_2);
+        } else if (levelTarget === '3') {
+          gameState.unlockPower(POWER_PATH.PROTECTIVE);
+          gameState.setPhase(GAME_PHASE.LEVEL_3);
+        } else if (levelTarget === 'final') {
+          gameState.unlockPower(POWER_PATH.STRATEGIC);
+          gameState.setPhase(GAME_PHASE.FINAL_BATTLE);
+        }
+      });
+    });
+
+    // Leaderboard
     const overlay = document.getElementById('leaderboard-overlay');
     const closeBtn = document.getElementById('btn-close-lb');
 

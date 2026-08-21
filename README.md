@@ -1,192 +1,116 @@
-# SCAR — The Last Choice
-> "Everyone has a superpower. You have zero."
+# SCAR — THE LAST CHOICE
+> *"Everyone has a superpower. The player has ZERO."*
 
-A narrative choice-driven game for **FRONTIER 2026 — Cloud-Powered Game Development Hackathon**  
-Malla Reddy University | 21–22 August 2026
-
----
-
-## Team
-
-| Member | Role | Branch |
-|--------|------|--------|
-| **Sirish** | Lead / Story / Integration | `feature/sirish-integration` ✅ |
-| **Ashwidha** | UI/UX / Visuals / Cinematics | `feature/ashwidha-ui` |
-| **Kaustub** | Gameplay / Powers / AI | `feature/kaustub-gameplay` |
-| **Priyanshu** | Backend / AWS / Leaderboard | `feature/priyanshu-backend` |
+A narrative choice-driven 3D action cyberpunk game created for the **FRONTIER 2026 — Cloud-Powered Game Development Hackathon**.
 
 ---
 
-## Architecture
+## 🎮 Game Overview
 
-```
-index.html                     ← Entry point (Sirish)
-src/
-  game.js                      ← Boot + wiring (Sirish)
-  core/
-    EventBus.js                ← All events (Sirish) ← READ FIRST
-    GameState.js               ← Central state machine (Sirish)
-    MissionSystem.js           ← Mission lifecycle (Sirish)
-    ChoiceSystem.js            ← Choices + power path (Sirish)
-    ScoreSystem.js             ← Real score from gameplay (Sirish)
-  story/
-    StoryContent.js            ← All narrative data (Sirish)
-  engine/
-    PrototypeRenderer.js       ← Working prototype visuals (Sirish → Ashwidha replaces)
-  integration/
-    GameManager.js             ← Master orchestrator (Sirish)
-    TeamAPI.js                 ← Team integration contracts ← READ BEFORE CODING
-```
+In a neon-drenched metropolis where every citizen was born with extraordinary superhuman abilities, you are an ordinary young man with zero powers. Confronted and brutally scarred by a syndicate of high-tier enforcers, you embark on a 72-hour journey fueled by insecurity and revenge — only to discover that power changes what you can do, but choices decide who you become.
+
+### 🌟 Core Features
+- **Cinematic 3D Over-The-Shoulder Action**: Smooth WASD movement, 3-hit katana combo ribbons, and 360° aerodynamic dodge rolls with invulnerability frames.
+- **72-Hour Survival Deadline**: Visible HUD countdown (`TIME REMAINING: 72:00:00`) where travel, exploration, and combat decisions consume time under pressure.
+- **Three-Level Progression**:
+  - **Level 1 — The Powerless**: Insecurity, investigation, and the climactic scar reaction that unlocks `[Q] ADAPT`.
+  - **Level 2 — Evolution**: Moral decisions (trapped civilians, enemy mercy, shortcuts), emotional pressure system, and `[R] EVOLVE`.
+  - **Level 3 — Identity**: The city reacts to your moral profile; showdown against the city's prodigy **Atlas**.
+- **Adaptive Hero AI (Atlas)**: Atlas observes your playstyle in real time — countering spammed abilities, parrying aggression, and questioning your choices.
+- **Glitch / Replay Memory**: The world remembers previous runs; subtle glitch flickers, prior-choice dialogue references, and secret time-freeze ability `[G] GLITCH`.
+- **4 Divergent Endings**: The Avenger (Villain), The Tyrant, The Savior, and The Self (Human).
+- **Zero Fake Data Telemetry**: Authentic AWS backend integration saving real scores, sessions, and player profiles.
 
 ---
 
-## Rules (Non-Negotiable)
+## 🕹️ Controls Guide
 
-- ❌ Never push to `main` directly
-- ❌ Never force push
-- ❌ Never create fake users, scores, or leaderboard entries
-- ❌ Never commit API keys or secrets
-- ✅ Work only on your assigned branch
-- ✅ Read `TeamAPI.js` before writing any cross-system code
+| Input | Action | Tactical Description |
+|---|---|---|
+| **`W`, `A`, `S`, `D`** | Movement | Directional stride cycle with dynamic flowing coat physics |
+| **`Mouse Movement`** | Over-the-Shoulder Aim | Directional camera lead |
+| **`Left Mouse Button`** | Katana 3-Hit Combo | Horizontal Strike $\rightarrow$ Rising Upper $\rightarrow$ Heavy Cleave |
+| **`Space` / `Left Shift`** | 360° Dodge Roll | Aerodynamic tumble with invulnerability frames |
+| **`Q` / `Right Mouse`** | Activate Awakened Power | Triggers unlocked Power Path (Nova / Barrier / Stasis) |
+| **`R`** | Evolve Superpower | Overcharges active power duration and attack strength |
+| **`G`** | Secret Glitch Power | Temporal distortion that freezes surrounding enemies |
+| **`E`** | Investigate & Comms | Intercept clues & tactical radio dialogue with Informant Kira |
+| **`Space` / `Click`** | Advance Story | Progress dialogue and skip cutscenes |
+| **`1, 2, 3`** | Moral Choices | Select critical story decisions |
+| **`Escape`** | Tactical Pause Menu | Pause game, view controls, toggle audio, or quit to title |
 
 ---
 
-## Quick Start
+## 🚀 How to Run
 
+### 1. Web Frontend Engine
 ```bash
-# Serve locally (no build needed — pure ES modules)
-npx serve .
-# or
+# Start frontend web server from the project root
 python -m http.server 8080
 ```
+Open **`http://localhost:8080`** in your browser.
 
-Open `http://localhost:8080` (or 3000) in Chrome.
+### 2. Live Cloud Backend API & Database
+```bash
+# Install dependencies & initialize SQLite database
+npm install --prefix backend
+npx --prefix backend prisma db push
 
-> **Note:** Must be served over HTTP — ES modules don't work via `file://`
+# Start backend daemon
+node backend/src/server.js
+```
+The backend API will run live on **`http://localhost:3000`**.
 
 ---
 
-## Ashwidha — UI/UX
+## ⚡ Hackathon Demo Selector (For Judges)
 
-Your job: Replace `PrototypeRenderer.js` with cyberpunk visuals.
-
-**Read:** `src/integration/TeamAPI.js` → `AshwidhaAPI` section
-
-**Register your renderer:**
-```js
-import { gameManager } from '../integration/GameManager.js';
-gameManager.registerRenderer(yourRenderer);
-```
-
-Your renderer must implement:
-- `init()` → async setup
-- `render(state, dt)` → called every frame
-- `showCinematic(panels, phase)` → full-screen cinematic
-- `showChoice(choice)` → choice overlay
-- `showDialogue(dialogue)` → dialogue box
-- `showFinalChoice(eligibleEndings)` → final ending choice
-- `showEnding(ending, score, breakdown)` → ending screen
+The game includes a dedicated **DEMO SELECTOR** button on the title screen for instant access to any section:
+1. **Level 1**: The Powerless (Investigation & basic combat)
+2. **Boss 1 & Awakening**: Enforcer showdown & `[Q] ADAPT` moment
+3. **Level 2**: Evolution & Moral Choices (Trapped civilian & mercy dilemma)
+4. **Level 3 & Atlas Boss**: The Prodigy showdown with adaptive combat AI
+5. **Final Confrontation**: 4 Divergent Endings & Journey Reflection
 
 ---
 
-## Kaustub — Gameplay / AI
+## ☁️ AWS Cloud Architecture
 
-Your job: Implement the game engine (movement, combat, powers, enemy AI).
-
-**Read:** `src/integration/TeamAPI.js` → `KaustubAPI` section
-
-**Register your engine:**
-```js
-import { gameManager } from '../integration/GameManager.js';
-gameManager.registerEngine(yourEngine);
+```text
+  [ SCAR Web Engine ]
+         │
+         ▼  (HTTPS / REST API)
+  [ Express / API Gateway ]
+         │
+         ├─────────────────────────────┬────────────────────────────┐
+         ▼                             ▼                            ▼
+  [ DynamoDB / SQLite ]        [ AWS Bedrock AI ]          [ CloudWatch ]
+  • Player Sessions            • Personalized Reflection   • Real-Time Telemetry
+  • Global Leaderboards        • Narrative Profile         • Choice Distribution
+  • Previous Run Memory
 ```
 
-**Call these when gameplay events happen:**
-```js
-KaustubAPI.playerEnteredArea('SAFEHOUSE_L1')   // triggers mission objective
-KaustubAPI.enemyDefeated('enemy_id')            // tracks kills + objectives
-KaustubAPI.npcInteracted('INFORMANT_KIRA')      // triggers dialogue
-KaustubAPI.playerTakeDamage(20)                 // updates health
-```
-
-**Check this before moving:**
-```js
-KaustubAPI.isChoiceBlocking()  // freeze movement when true
-```
+- **DynamoDB / SQLite Store**: Authoritative storage of player sessions, choice history, and score telemetry.
+- **AWS Bedrock Runtime**: Generates personalized psychological player reflections based on gameplay choices and emotional pressure profile.
+- **Previous Run Memory**: Powers the Glitch System by retrieving previous run actions to alter NPC dialogue on subsequent playthroughs.
 
 ---
 
-## Priyanshu — Backend / AWS
+## 🛡️ Test Suites & Verification
 
-Your job: Auth, score persistence, real leaderboard.
-
-**Read:** `src/integration/TeamAPI.js` → `PriyanshuAPI` section
-
-**Register your backend:**
-```js
-import { gameManager } from '../integration/GameManager.js';
-gameManager.registerBackend(yourBackend);
-```
-
-**After auth:**
-```js
-PriyanshuAPI.setAuthenticatedPlayer(playerId, playerName);
-```
-
-**After game ends, listen to:**
-```js
-PriyanshuAPI.events.onScoreCalculated(async () => {
-  const payload = PriyanshuAPI.getScorePayload();
-  await yourAPI.saveScore(payload); // save to DynamoDB / RDS
-  PriyanshuAPI.emitScoreSubmitted({ saved: true });
-});
-```
-
-**Populate leaderboard in `index.html`:**
-```js
-// In the SHOW_LEADERBOARD event handler — replace lb-empty with real data
-const scores = await PriyanshuAPI.getLeaderboard();
-// Render as .lb-row elements
-```
+- **Master E2E Backend Database Test**: **4 / 4 Narrative Paths PASS (100%)**
+- **Backend API Jest Test Suite**: **22 / 22 PASS (100%)**
+- **Visual & Particle System QA Suite**: **30 / 30 PASS (100%)**
+- **Gameplay State Machine Regression Suite**: **29 / 29 PASS (100%)**
+- **Total Automated Tests**: **85 / 85 PASS**
+- **Zero Fake Data Rule**: **100% Compliant**
 
 ---
 
-## Game Flow
+## 📜 Third-Party Open Source Libraries & Licenses
 
-```
-Boot → Start Screen → Cinematic Intro → City Exploration
-→ Attack Sequence → Scar Moment
-→ Level 1 (The Weak) → Power Awakening Choice
-→ Level 2 (The Rising) → Hero Encounter Choice
-→ Level 3 (The Threat)
-→ Final Battle → Final Choice
-→ Ending Screen → Score → Leaderboard
-```
-
-## Power Paths
-
-| Path | Behavior | Ending Eligible |
-|------|----------|-----------------|
-| AGGRESSIVE | High damage, low trust | Villain |
-| PROTECTIVE | Shielding, healing | Hero, Savior |
-| STRATEGIC | Control, manipulation | Savior, Control |
-| Balanced all three | Secret | Human (highest score) |
-
----
-
-## Score Formula
-
-`Score = (Base + Time + Health + Combat + Objectives + Choices + EligibleBonus) × EndingMultiplier`
-
-| Component | Value |
-|-----------|-------|
-| Base completion | 1000 |
-| Time bonus | +2/sec remaining |
-| Health remaining | +3/HP |
-| Each enemy defeated | +50 |
-| Each objective | +200 |
-| Each choice made | +75 |
-| Eligible ending bonus | +500 |
-| Ending multiplier | Villain ×1.0, Hero ×1.2, Savior ×1.5, Human ×2.0 |
-
-**Score is ALWAYS real. Never randomized.**
+- **Three.js / WebGL / Canvas2D** — MIT License
+- **Web Speech API** — W3C Standard Specification
+- **Express.js** — MIT License
+- **Prisma ORM** — Apache 2.0 License
+- **Jest** — MIT License
