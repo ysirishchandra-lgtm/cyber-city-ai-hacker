@@ -1,6 +1,6 @@
 /**
  * SCAR — THE LAST CHOICE
- * Master Gameplay Engine (KAUSTUB — GAMEPLAY)
+ * Master Gameplay Engine (KAUSTUB & SIRISH — Gameplay & Systems)
  * 
  * Implements Sirish's GameManager engine interface:
  * - init()
@@ -36,6 +36,11 @@ export class KaustubGameplayEngine {
 
     this.currentScene = 'BOOT';
     this.levelTransitionTimer = 0;
+
+    // Spatial Warehouse Target Objective: Coordinate (900, 350), 50px radius disc
+    this.warehouseTarget = { x: 900, y: 350, radius: 50 };
+    this._warehouseObjectiveTriggered = false;
+
     this._setupInputs();
   }
 
@@ -122,6 +127,7 @@ export class KaustubGameplayEngine {
     this.projectiles = [];
     this.particleEffects = [];
     this.levelTransitionTimer = 0;
+    this._warehouseObjectiveTriggered = false;
     this._areaTriggersChecked = {};
     this.exportRenderState();
   }
@@ -156,6 +162,7 @@ export class KaustubGameplayEngine {
       new Enemy('drone_3', 750, 250, ENEMY_TYPES.DRONE),
       new Enemy('drone_4', 850, 450, ENEMY_TYPES.DRONE)
     ];
+    this._warehouseObjectiveTriggered = false;
     this._areaTriggersChecked = {};
   }
 
@@ -201,20 +208,51 @@ export class KaustubGameplayEngine {
 
     this.powerSystem.update(dt);
 
-    // Update Player
+    // Update Player locomotion and combat
     this.player.handleInput(this.keys, this.mousePos, this.camera, dt);
 
-    // Camera follow
+    // Camera follow with smooth damping
     const winW = typeof window !== 'undefined' ? window.innerWidth : 800;
     const winH = typeof window !== 'undefined' ? window.innerHeight : 600;
     const targetCamX = this.player.x - winW / 2;
     const targetCamY = this.player.y - winH / 2;
-    this.camera.x += (targetCamX - this.camera.x) * 0.1;
-    this.camera.y += (targetCamY - this.camera.y) * 0.1;
+    this.camera.x += (targetCamX - this.camera.x) * 0.12;
+    this.camera.y += (targetCamY - this.camera.y) * 0.12;
 
-    // Check dynamic area triggers based on player progression
+    // Check dynamic area triggers & warehouse target zone collision (< 50px radius)
     if (this.currentScene === 'LEVEL_1' || this.currentScene === 'CITY_NORMAL') {
-      KaustubAPI.playerEnteredArea('SAFEHOUSE_L1');
+      const distToWarehouse = Math.hypot(
+        this.player.x - this.warehouseTarget.x,
+        this.player.y - this.warehouseTarget.y
+      );
+
+      // Trigger zone completion event when character enters the cyan target disc (< 50px radius)
+      if (distToWarehouse <= this.warehouseTarget.radius && !this._warehouseObjectiveTriggered) {
+        this._warehouseObjectiveTriggered = true;
+        KaustubAPI.playerEnteredArea('SAFEHOUSE_L1');
+
+        eventBus.emit(EVENTS.MISSION_OBJECTIVE_UPDATED, {
+          missionId: 'M1_SURVIVE_THE_NIGHT',
+          objectiveId: 'obj_reach_safehouse',
+          progress: 1,
+          completed: true
+        });
+
+        eventBus.emit(EVENTS.CLUE_DISCOVERED, {
+          target: 'WAREHOUSE_ZONE_COMPLETED',
+          x: this.warehouseTarget.x,
+          y: this.warehouseTarget.y
+        });
+
+        // Trigger celebratory audio and visual burst
+        import('../visuals/AudioEngine.js').then(({ audioEngine }) => {
+          audioEngine.playPowerActivation('STRATEGIC');
+        });
+        import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+          particleSystem.spawnNova(this.warehouseTarget.x, this.warehouseTarget.y, 140, '#00f3ff');
+        });
+      }
+
       if (this.player.x > 350) {
         KaustubAPI.npcInteracted('INFORMANT_KIRA');
         KaustubAPI.playerEnteredArea('OLD_DISTRICT');
@@ -281,13 +319,30 @@ export class KaustubGameplayEngine {
       player: {
         x: this.player.x,
         y: this.player.y,
+        vx: this.player.vx,
+        vy: this.player.vy,
         radius: this.player.radius,
         facingAngle: this.player.facingAngle,
+        targetFacingAngle: this.player.targetFacingAngle,
+        isMoving: this.player.isMoving,
+        isSprinting: this.player.isSprinting,
+        locomotionState: this.player.locomotionState,
         isAttacking: this.player.isAttacking,
+        comboStep: this.player.comboStep,
+        sprintDodgeTimer: this.player.dodgeTimer,
+        dodgeTimer: this.player.dodgeTimer,
+        stridePhase: this.player.stridePhase,
+        strideTime: this.player.strideTime,
         health: gameState.getField('health'),
         stamina: this.player.stamina
       },
       camera: this.camera,
+      warehouseTarget: {
+        x: this.warehouseTarget.x,
+        y: this.warehouseTarget.y,
+        radius: this.warehouseTarget.radius,
+        completed: !!this._warehouseObjectiveTriggered
+      },
       enemies: this.enemies.filter(e => e.isAlive).map(e => ({
         id: e.id,
         x: e.x,

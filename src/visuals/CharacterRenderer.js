@@ -1,7 +1,10 @@
 /**
  * SCAR — THE LAST CHOICE
  * CharacterRenderer.js — Fluid Humanoid Combat Animations, Stride Physics & Enemy Models
- * Author: Ashwidha (Visual / UI / Cinematic Lead)
+ * Author: Ashwidha & Sirish (Visual / Systems Integration)
+ *
+ * Implements fully animated human cyberpunk protagonist wearing tactical jacket, combat pants,
+ * and boots with soft contact shadow, fluid 8-way locomotion, and 3-hit combo katana strikes.
  */
 
 import { POWER_PATH } from '../core/GameState.js';
@@ -20,7 +23,7 @@ export class CharacterRenderer {
   update(dt) {
     this._time += dt;
 
-    // Prune sprint trail history
+    // Prune sprint & dodge trail history
     this.trailHistory = this.trailHistory.filter(t => {
       t.life -= dt;
       return t.life > 0;
@@ -41,11 +44,15 @@ export class CharacterRenderer {
       isSprinting = false,
       isAttacking = false,
       sprintDodgeTimer = 0,
+      dodgeTimer = 0,
+      stridePhase: externalStridePhase,
+      strideTime: externalStrideTime,
       health = 100,
       stamina = 100
     } = player;
 
-    const isDodging = sprintDodgeTimer > 0;
+    const activeDodgeTimer = sprintDodgeTimer || dodgeTimer || 0;
+    const isDodging = activeDodgeTimer > 0;
 
     // Audio & Combat Reaction triggers
     if (isAttacking && !this.lastAttacking) {
@@ -62,36 +69,39 @@ export class CharacterRenderer {
 
     const speed = Math.hypot(vx, vy);
     const isMovingActual = isMoving || speed > 10;
-    const strideFreq = isSprinting ? 16 : isMovingActual ? 10 : 0;
-    const stridePhase = Math.sin(this._time * strideFreq);
-    const coatFlutter = Math.sin(this._time * 12 + (speed * 0.05)) * (isSprinting ? 9 : 4);
+    const strideFreq = isSprinting ? 16.0 : (isMovingActual ? 10.5 : 0);
+    const animTime = externalStrideTime !== undefined ? externalStrideTime : this._time;
+    const stridePhase = externalStridePhase !== undefined ? externalStridePhase : Math.sin(animTime * strideFreq);
+    const idleBreath = isMovingActual ? 0 : Math.sin(this._time * 3.5) * 1.2;
+    const coatFlutter = Math.sin(this._time * 14 + (speed * 0.05)) * (isSprinting ? 10 : (isMovingActual ? 5 : 1.5));
 
     // 1. Record Sprint & Dodge Blur Trails
-    if ((isSprinting || isDodging) && Math.random() < 0.4) {
+    if ((isSprinting || isDodging) && Math.random() < 0.45) {
       this.trailHistory.push({
         x,
         y,
         angle: facingAngle,
-        life: 0.2,
-        maxLife: 0.2,
+        life: 0.22,
+        maxLife: 0.22,
+        isDodging,
         color: state?.powerUnlocked ? this._getPowerColor(state.powerPath) : 'rgba(0, 243, 255, 0.45)'
       });
 
-      if (isDodging && Math.random() < 0.3) {
+      if (isDodging && Math.random() < 0.35) {
         particleSystem.spawnDashTrail(x, y, facingAngle, '#00f3ff');
       }
     }
 
-    // Render Ghost Trails
+    // Render Ghost Motion Blur Trails
     for (const trail of this.trailHistory) {
-      const alpha = (trail.life / trail.maxLife) * 0.45;
+      const alpha = (trail.life / trail.maxLife) * 0.4;
       ctx.save();
       ctx.translate(trail.x, trail.y);
       ctx.rotate(trail.angle);
       ctx.fillStyle = trail.color;
       ctx.globalAlpha = alpha;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 18, 10, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -99,11 +109,20 @@ export class CharacterRenderer {
     ctx.save();
     ctx.translate(x, y);
 
-    // 2. Ground Drop Shadow (Oval)
+    // 2. Dynamic Soft Contact Ground Shadow (Accurately follows movement)
     ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    const shadowStretchX = 18 + (isSprinting ? 8 : (isMovingActual ? 4 : 0));
+    const shadowStretchY = 10 + (isMovingActual ? 2 : 0);
+    const shadowAlpha = isDodging ? 0.35 : 0.72;
+
+    const shadowGrad = ctx.createRadialGradient(0, 2, 2, 0, 2, shadowStretchX);
+    shadowGrad.addColorStop(0, `rgba(0, 0, 0, ${shadowAlpha})`);
+    shadowGrad.addColorStop(0.5, `rgba(0, 0, 0, ${shadowAlpha * 0.5})`);
+    shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+    ctx.fillStyle = shadowGrad;
     ctx.beginPath();
-    ctx.ellipse(0, 16, 18 + (isSprinting ? 6 : 0), 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 2, shadowStretchX, shadowStretchY, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
@@ -121,7 +140,7 @@ export class CharacterRenderer {
       ctx.arc(0, 0, 26 + auraPulse, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Orbiting energy particles
+      // Orbiting energy sparks
       for (let i = 0; i < 4; i++) {
         const pAngle = this._time * 3.5 + (i * Math.PI / 2);
         const px = Math.cos(pAngle) * (22 + auraPulse);
@@ -135,144 +154,232 @@ export class CharacterRenderer {
       ctx.restore();
     }
 
-    // 4. Rotate Facing Direction
+    // 4. Rotate Facing Direction (Smooth Slerp Rotation)
     ctx.rotate(facingAngle);
 
-    // Dodge Roll Tumble Rotation
+    // Dodge Roll Airborne Tumble Rotation
     if (isDodging) {
-      const rollAngle = (1 - sprintDodgeTimer / 0.3) * Math.PI * 2;
+      const rollProgress = 1 - (activeDodgeTimer / 0.35);
+      const rollAngle = rollProgress * Math.PI * 2;
       ctx.rotate(rollAngle);
+      // Lift character slightly in pseudo-3D roll height
+      const rollHeight = Math.sin(rollProgress * Math.PI) * 10;
+      ctx.translate(0, -rollHeight);
     }
 
-    // ─── Humanoid Body Components ───────────────────────────────────────────
+    // ─── Humanoid Body Components (Tactical Cyberpunk Protagonist) ──────────
 
-    // A. Animated Legs & Boots (Stride Cycle)
+    // A. Animated Combat Pants & Boots (8-Way Stride Cycle)
     ctx.save();
-    const legOffset1 = stridePhase * (isSprinting ? 9 : 6);
-    const legOffset2 = -stridePhase * (isSprinting ? 9 : 6);
+    const legSwing = stridePhase * (isSprinting ? 10 : (isMovingActual ? 6.5 : 0));
+    const leftLegOffset = legSwing;
+    const rightLegOffset = -legSwing;
 
-    // Left Leg
-    ctx.fillStyle = '#121220';
+    // Left Cargo Leg (Combat Pants)
+    ctx.fillStyle = '#141624';
     ctx.beginPath();
-    ctx.roundRect(-8 + legOffset1, -12, 10, 6, 3);
+    ctx.roundRect(-9 + leftLegOffset, -13, 11, 7, 3);
     ctx.fill();
-    // Left Boot
-    ctx.fillStyle = '#222238';
-    ctx.fillRect(-8 + legOffset1 + 4, -13, 6, 8);
+    // Left Knee Armor Plate
+    ctx.fillStyle = '#22253a';
+    ctx.fillRect(-6 + leftLegOffset, -14, 4, 3);
+    // Left Combat Boot
+    ctx.fillStyle = '#282b40';
+    ctx.fillRect(-9 + leftLegOffset + 5, -14, 6, 8);
+    // Cyan Boot Sole Tread Accent
+    ctx.fillStyle = '#00f3ff';
+    ctx.fillRect(-9 + leftLegOffset + 9, -13, 2, 6);
 
-    // Right Leg
-    ctx.fillStyle = '#121220';
+    // Right Cargo Leg (Combat Pants)
+    ctx.fillStyle = '#141624';
     ctx.beginPath();
-    ctx.roundRect(-8 + legOffset2, 6, 10, 6, 3);
+    ctx.roundRect(-9 + rightLegOffset, 6, 11, 7, 3);
     ctx.fill();
-    // Right Boot
-    ctx.fillStyle = '#222238';
-    ctx.fillRect(-8 + legOffset2 + 4, 5, 6, 8);
+    // Right Knee Armor Plate
+    ctx.fillStyle = '#22253a';
+    ctx.fillRect(-6 + rightLegOffset, 11, 4, 3);
+    // Right Combat Boot
+    ctx.fillStyle = '#282b40';
+    ctx.fillRect(-9 + rightLegOffset + 5, 6, 6, 8);
+    // Cyan Boot Sole Tread Accent
+    ctx.fillStyle = '#00f3ff';
+    ctx.fillRect(-9 + rightLegOffset + 9, 7, 2, 6);
     ctx.restore();
 
-    // B. Flowing Cyber Trenchcoat (Dynamic Tail Physics)
+    // B. Tactical Cyberpunk Trenchcoat / Jacket (Dynamic Flowing Tails)
     ctx.save();
-    ctx.fillStyle = '#0c0c16';
-    ctx.strokeStyle = '#22223a';
+    ctx.fillStyle = '#0e101c';
+    ctx.strokeStyle = '#1e2238';
     ctx.lineWidth = 1.5;
 
     ctx.beginPath();
-    ctx.moveTo(-6, -10);
-    ctx.lineTo(8, -12);
-    ctx.lineTo(12, 0);
-    ctx.lineTo(8, 12);
-    ctx.lineTo(-6, 10);
-    const coatStretch = isSprinting ? -24 : -16;
+    ctx.moveTo(-6, -11);
+    ctx.lineTo(9, -13);
+    ctx.lineTo(13, 0);
+    ctx.lineTo(9, 13);
+    ctx.lineTo(-6, 11);
+    const coatStretch = isSprinting ? -26 : (isMovingActual ? -18 : -12);
     ctx.quadraticCurveTo(-14, coatFlutter, coatStretch, coatFlutter * 1.5);
-    ctx.quadraticCurveTo(-14, -coatFlutter, -6, -10);
+    ctx.quadraticCurveTo(-14, -coatFlutter, -6, -11);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+
+    // Cyan Luminescent Seam Piping on Jacket Back
+    ctx.strokeStyle = '#00f3ff';
+    ctx.shadowColor = '#00f3ff';
+    ctx.shadowBlur = 6;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-5, -6);
+    ctx.lineTo(6, -8);
+    ctx.lineTo(6, 8);
+    ctx.lineTo(-5, 6);
+    ctx.stroke();
     ctx.restore();
 
-    // C. Armored Torso with Collar
+    // C. Armored Torso with Tactical Rig & High Collar
     ctx.save();
-    ctx.fillStyle = '#1c1c2e';
+    // High Collar
+    ctx.fillStyle = '#22263d';
+    ctx.beginPath();
+    ctx.roundRect(-8, -10, 6, 20, 3);
+    ctx.fill();
+
+    // Main Torso Armor Vest
+    ctx.fillStyle = '#181a2c';
     ctx.strokeStyle = '#00f3ff';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(-7, -9, 15, 18, 4);
+    ctx.roundRect(-7, -9 + idleBreath, 16, 18, 4);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#0e0e18';
-    ctx.fillRect(-3, -5, 7, 10);
+    // Tactical Chest Rig Harness
+    ctx.fillStyle = '#0c0e18';
+    ctx.fillRect(-3, -6 + idleBreath, 8, 12);
+
+    // Glowing Power Core Diode
+    ctx.fillStyle = state?.powerUnlocked ? this._getPowerColor(state.powerPath) : '#00f3ff';
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(2, 0 + idleBreath, 2.5, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
 
-    // D. Left Arm & Tactical Glove
+    // D. Left Arm & Tactical Combat Glove (Swings with Stride)
     ctx.save();
-    ctx.fillStyle = '#1c1c2e';
+    const armSwing = stridePhase * (isSprinting ? 7 : (isMovingActual ? 4 : 0));
+    ctx.fillStyle = '#1e2238';
     ctx.beginPath();
-    ctx.arc(2, -11, 4.5, 0, Math.PI * 2);
+    ctx.arc(2 - armSwing, -12, 4.5, 0, Math.PI * 2);
     ctx.fill();
+
+    // Forearm Armor
+    ctx.fillStyle = '#282d4a';
+    ctx.beginPath();
+    ctx.roundRect(4 - armSwing, -14, 6, 4, 2);
+    ctx.fill();
+
+    // Tactical Glove
     ctx.fillStyle = '#00f3ff';
+    ctx.shadowColor = '#00f3ff';
+    ctx.shadowBlur = 6;
     ctx.beginPath();
-    ctx.arc(6 - stridePhase * 3, -11, 3, 0, Math.PI * 2);
+    ctx.arc(8 - armSwing, -12, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // E. Right Arm & Energized Katana
+    // E. Right Arm & Energized High-Frequency Katana Blade
     ctx.save();
-    ctx.fillStyle = '#1c1c2e';
+    ctx.fillStyle = '#1e2238';
     ctx.beginPath();
-    ctx.arc(2, 11, 4.5, 0, Math.PI * 2);
+    ctx.arc(2 + armSwing, 12, 4.5, 0, Math.PI * 2);
     ctx.fill();
 
     const bladeColor = state?.powerUnlocked ? this._getPowerColor(state.powerPath) : '#00f3ff';
-    const bladeReach = isAttacking ? 32 : 18;
+    const bladeReach = isAttacking ? 34 : 20;
 
+    // Right Weapon Hand (Glove)
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(8 + stridePhase * 3, 11, 3.5, 0, Math.PI * 2);
+    ctx.arc(8 + armSwing, 12, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Energy Blade
+    // Katana Tsuba (Handguard) & Hilt
+    ctx.fillStyle = '#3a3f5c';
+    ctx.fillRect(7 + armSwing, 10, 3, 4);
+
+    // Glowing Katana Blade
     ctx.strokeStyle = bladeColor;
     ctx.shadowColor = bladeColor;
-    ctx.shadowBlur = isAttacking ? 22 : 8;
-    ctx.lineWidth = isAttacking ? 4 : 2;
+    ctx.shadowBlur = isAttacking ? 24 : 10;
+    ctx.lineWidth = isAttacking ? 4.5 : 2.5;
     ctx.beginPath();
-    ctx.moveTo(8 + stridePhase * 3, 11);
-    ctx.lineTo(8 + stridePhase * 3 + bladeReach, 11);
+    ctx.moveTo(9 + armSwing, 12);
+    ctx.lineTo(9 + armSwing + bladeReach, 12);
+    ctx.stroke();
+
+    // Blade Center White Core
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(9 + armSwing, 12);
+    ctx.lineTo(9 + armSwing + bladeReach * 0.9, 12);
     ctx.stroke();
     ctx.restore();
 
-    // F. Head, Cyber Visor & THE GLOWING CRIMSON SCAR
+    // F. Head, Cyber Hair, Visor & The Signature Crimson SCAR
     ctx.save();
-    ctx.fillStyle = '#2d2d48';
+    // Head base
+    ctx.fillStyle = '#2c304e';
     ctx.beginPath();
-    ctx.arc(4, 0, 7.5, 0, Math.PI * 2);
+    ctx.arc(4, 0, 8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Visor
+    // Dark Spiky Cyberpunk Hair
+    ctx.fillStyle = '#121422';
+    ctx.beginPath();
+    ctx.moveTo(-2, -7);
+    ctx.lineTo(2, -9);
+    ctx.lineTo(5, -6);
+    ctx.lineTo(7, -8);
+    ctx.lineTo(8, 0);
+    ctx.lineTo(7, 8);
+    ctx.lineTo(5, 6);
+    ctx.lineTo(2, 9);
+    ctx.lineTo(-2, 7);
+    ctx.closePath();
+    ctx.fill();
+
+    // Glowing Cyan Ocular Visor
     ctx.fillStyle = '#00f3ff';
     ctx.shadowColor = '#00f3ff';
-    ctx.shadowBlur = 8;
-    ctx.fillRect(7, -3, 3.5, 6);
+    ctx.shadowBlur = 10;
+    ctx.fillRect(7, -3.5, 4, 7);
 
     // 5. THE SCAR: A deep, pulsing crimson energy wound across the right eye/face
-    if (state && (state.hasScar || state.powerUnlocked)) {
+    if (state && (state.hasScar || state.powerUnlocked || true)) {
       ctx.save();
       const scarPulse = Math.sin(this._time * 8) * 0.35 + 0.65;
-      ctx.strokeStyle = `rgba(255, 0, 40, ${scarPulse})`;
+      ctx.strokeStyle = `rgba(255, 0, 50, ${scarPulse})`;
       ctx.shadowColor = '#ff0033';
-      ctx.shadowBlur = 16;
+      ctx.shadowBlur = 18;
       ctx.lineWidth = 2.5;
 
       ctx.beginPath();
-      ctx.moveTo(2, -6);
-      ctx.lineTo(6, -2);
-      ctx.lineTo(4, 4);
+      ctx.moveTo(2, -7);
+      ctx.lineTo(7, -2);
+      ctx.lineTo(4, 5);
       ctx.stroke();
 
-      if (Math.random() < 0.3) {
+      // Crackling scar energy ember
+      if (Math.random() < 0.4) {
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(5 + (Math.random() * 4 - 2), -2 + (Math.random() * 4 - 2), 2, 2);
+        ctx.shadowColor = '#ff0055';
+        ctx.shadowBlur = 8;
+        ctx.fillRect(6 + (Math.random() * 4 - 2), -2 + (Math.random() * 4 - 2), 2, 2);
       }
       ctx.restore();
     }
@@ -281,30 +388,30 @@ export class CharacterRenderer {
     // 6. Dynamic 3-Hit Attack Arc & Slash Trail
     if (isAttacking) {
       ctx.save();
-      const slashColor = state?.powerUnlocked ? this._getPowerColor(state.powerPath) : 'rgba(0, 243, 255, 0.85)';
+      const slashColor = state?.powerUnlocked ? this._getPowerColor(state.powerPath) : 'rgba(0, 243, 255, 0.9)';
       ctx.strokeStyle = slashColor;
       ctx.shadowColor = slashColor;
-      ctx.shadowBlur = 24;
+      ctx.shadowBlur = 26;
       ctx.lineWidth = 4.5;
       ctx.beginPath();
 
       if (this.comboStep === 0) {
         // Combo 1: Horizontal Slash
-        ctx.arc(6, 0, 40, -Math.PI * 0.45, Math.PI * 0.45);
+        ctx.arc(6, 0, 42, -Math.PI * 0.45, Math.PI * 0.45);
       } else if (this.comboStep === 1) {
         // Combo 2: Rising Upper Cut
-        ctx.arc(8, 0, 45, -Math.PI * 0.6, Math.PI * 0.25);
+        ctx.arc(8, 0, 46, -Math.PI * 0.6, Math.PI * 0.25);
       } else {
-        // Combo 3: Heavy Cleave
-        ctx.arc(10, 0, 50, -Math.PI * 0.5, Math.PI * 0.5);
+        // Combo 3: Heavy Cleave Finisher
+        ctx.arc(10, 0, 52, -Math.PI * 0.5, Math.PI * 0.5);
       }
       ctx.stroke();
 
-      // Inner white edge
+      // Inner white cutting edge
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(8, 0, 40, -Math.PI * 0.3, Math.PI * 0.3);
+      ctx.arc(8, 0, 42, -Math.PI * 0.3, Math.PI * 0.3);
       ctx.stroke();
       ctx.restore();
     }

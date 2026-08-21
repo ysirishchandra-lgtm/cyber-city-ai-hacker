@@ -1,31 +1,55 @@
 /**
  * SCAR — THE LAST CHOICE
- * Player Entity Controller (KAUSTUB — GAMEPLAY)
+ * Player Entity Controller (Sirish & Kaustub — Gameplay / Locomotion)
  * 
- * Integrated with Sirish's TeamAPI, EventBus, and GameState.
+ * Fully animated human protagonist with fluid Free-Fire/PUBG-style locomotion,
+ * smooth slerp/lerp angular rotation, ground contact physics, and interaction triggers.
  */
 
 import { KaustubAPI } from '../integration/TeamAPI.js';
 import { eventBus, EVENTS } from '../core/EventBus.js';
 import { gameState } from '../core/GameState.js';
+import { characterRenderer } from '../visuals/CharacterRenderer.js';
+
+/**
+ * Normalizes an angle difference to [-PI, PI] for shortest rotation path
+ */
+function normalizeAngleDiff(diff) {
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  return diff;
+}
 
 export class Player {
-  constructor(x = 100, y = 100) {
+  constructor(x = 200, y = 300) {
     this.x = x;
     this.y = y;
     this.vx = 0;
     this.vy = 0;
-    this.speed = 180;
-    this.sprintSpeed = 300;
+
+    // Locomotion tuning (Free-Fire / PUBG inspired responsive movement)
+    this.walkSpeed = 160;
+    this.jogSpeed = 225;
+    this.sprintSpeed = 340;
     this.radius = 16;
 
+    // Angular orientation & smooth turning (slerp/lerp)
     this.facingAngle = 0;
+    this.targetFacingAngle = 0;
+    this.turnSpeed = 16.0; // rad/s smooth turning rate
+
+    // Locomotion & animation states
     this.isMoving = false;
     this.isSprinting = false;
+    this.locomotionState = 'IDLE'; // 'IDLE' | 'WALK' | 'JOG' | 'SPRINT' | 'DODGE'
+    this.stridePhase = 0;
+    this.strideTime = 0;
 
+    // Stamina & Resource Pools
     this.stamina = 100;
     this.maxStamina = 100;
 
+    // Combat & Attack
     this.attackCooldown = 0;
     this.attackRate = 0.28;
     this.isAttacking = false;
@@ -33,44 +57,94 @@ export class Player {
     this.comboStep = 0;
     this.comboResetTimer = 0;
 
+    // Dodge Roll (360° aerodynamic roll with i-frames)
+    this.dodgeTimer = 0;
+    this.maxDodgeTime = 0.35;
+    this.dodgeVx = 0;
+    this.dodgeVy = 0;
+
     this.lastEmittedX = x;
     this.lastEmittedY = y;
-    this.dodgeTimer = 0;
   }
 
-  reset(x = 100, y = 100) {
+  reset(x = 200, y = 300) {
     this.x = x;
     this.y = y;
     this.vx = 0;
     this.vy = 0;
+    this.facingAngle = 0;
+    this.targetFacingAngle = 0;
+    this.isMoving = false;
+    this.isSprinting = false;
+    this.locomotionState = 'IDLE';
+    this.stridePhase = 0;
+    this.strideTime = 0;
     this.stamina = 100;
     this.attackCooldown = 0;
     this.isAttacking = false;
     this.comboStep = 0;
     this.comboResetTimer = 0;
     this.dodgeTimer = 0;
+    this.dodgeVx = 0;
+    this.dodgeVy = 0;
+    this.lastEmittedX = x;
+    this.lastEmittedY = y;
     KaustubAPI.updatePosition(x, y);
   }
 
+  /**
+   * Execute 360° Dodge Roll with directional momentum & invulnerability frames
+   */
   dodge() {
     if (this.stamina >= 20 && this.dodgeTimer <= 0) {
       this.stamina -= 20;
-      this.dodgeTimer = 0.35; // 350ms invulnerability window + dash
-      this.x += Math.cos(this.facingAngle) * 45;
-      this.y += Math.sin(this.facingAngle) * 45;
+      this.dodgeTimer = this.maxDodgeTime;
+      this.locomotionState = 'DODGE';
+
+      // Roll in movement direction if moving, otherwise forward in facing angle
+      const rollAngle = (Math.hypot(this.vx, this.vy) > 10)
+        ? Math.atan2(this.vy, this.vx)
+        : this.facingAngle;
+
+      const rollSpeed = 480;
+      this.dodgeVx = Math.cos(rollAngle) * rollSpeed;
+      this.dodgeVy = Math.sin(rollAngle) * rollSpeed;
+
       KaustubAPI.updatePosition(Math.round(this.x), Math.round(this.y));
       return true;
     }
     return false;
   }
 
+  /**
+   * Fluid 8-directional input, smooth velocity interpolation, and slerp rotation
+   */
   handleInput(keys, mousePos, camera, dt) {
-    if (KaustubAPI.isChoiceBlocking()) return;
-
-    if (this.dodgeTimer > 0) {
-      this.dodgeTimer -= dt;
+    if (KaustubAPI.isChoiceBlocking()) {
+      this.vx = 0;
+      this.vy = 0;
+      this.isMoving = false;
+      this.isSprinting = false;
+      this.locomotionState = 'IDLE';
+      return;
     }
 
+    // 1. Update Dodge State & Movement Momentum
+    if (this.dodgeTimer > 0) {
+      this.dodgeTimer -= dt;
+      this.x += this.dodgeVx * dt;
+      this.y += this.dodgeVy * dt;
+
+      // Friction on dodge roll
+      this.dodgeVx *= Math.pow(0.2, dt);
+      this.dodgeVy *= Math.pow(0.2, dt);
+
+      if (this.dodgeTimer <= 0) {
+        this.locomotionState = this.isMoving ? (this.isSprinting ? 'SPRINT' : 'JOG') : 'IDLE';
+      }
+    }
+
+    // 2. Combo Reset Timer
     if (this.comboResetTimer > 0) {
       this.comboResetTimer -= dt;
       if (this.comboResetTimer <= 0) {
@@ -78,54 +152,94 @@ export class Player {
       }
     }
 
-    let dx = 0;
-    let dy = 0;
+    // 3. 8-Directional Movement Input Vector
+    let inputX = 0;
+    let inputY = 0;
 
-    if (keys['w'] || keys['W'] || keys['ArrowUp']) dy -= 1;
-    if (keys['s'] || keys['S'] || keys['ArrowDown']) dy += 1;
-    if (keys['a'] || keys['A'] || keys['ArrowLeft']) dx -= 1;
-    if (keys['d'] || keys['D'] || keys['ArrowRight']) dx += 1;
+    if (keys['w'] || keys['W'] || keys['ArrowUp']) inputY -= 1;
+    if (keys['s'] || keys['S'] || keys['ArrowDown']) inputY += 1;
+    if (keys['a'] || keys['A'] || keys['ArrowLeft']) inputX -= 1;
+    if (keys['d'] || keys['D'] || keys['ArrowRight']) inputX += 1;
 
-    if (dx !== 0 && dy !== 0) {
-      dx *= 0.7071;
-      dy *= 0.7071;
+    // Diagonal normalization for consistent velocity
+    if (inputX !== 0 && inputY !== 0) {
+      inputX *= 0.7071;
+      inputY *= 0.7071;
     }
 
-    this.isSprinting = (keys['Shift'] || keys['shift']) && this.stamina > 10;
-    const currentSpeed = this.isSprinting ? this.sprintSpeed : this.speed;
+    const hasInput = (inputX !== 0 || inputY !== 0);
 
-    if (this.isSprinting) {
-      this.stamina = Math.max(0, this.stamina - 30 * dt);
+    // 4. Sprint & Stamina Calculation
+    const sprintKey = keys['Shift'] || keys['shift'];
+    this.isSprinting = !!(sprintKey && hasInput && this.stamina > 5);
+
+    let targetSpeed = 0;
+    if (hasInput) {
+      if (this.isSprinting) {
+        targetSpeed = this.sprintSpeed;
+        this.locomotionState = 'SPRINT';
+        this.stamina = Math.max(0, this.stamina - 28 * dt);
+      } else {
+        targetSpeed = this.jogSpeed;
+        this.locomotionState = 'JOG';
+        this.stamina = Math.min(this.maxStamina, this.stamina + 20 * dt);
+      }
     } else {
-      this.stamina = Math.min(this.maxStamina, this.stamina + 20 * dt);
+      targetSpeed = 0;
+      this.locomotionState = this.dodgeTimer > 0 ? 'DODGE' : 'IDLE';
+      this.stamina = Math.min(this.maxStamina, this.stamina + 25 * dt);
     }
 
-    this.vx = dx * currentSpeed;
-    this.vy = dy * currentSpeed;
+    // 5. Smooth Velocity Acceleration & Deceleration (Friction)
+    const targetVx = inputX * targetSpeed;
+    const targetVy = inputY * targetSpeed;
+    const accelRate = hasInput ? 18.0 : 22.0; // responsive acceleration & braking
 
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
+    this.vx += (targetVx - this.vx) * Math.min(1, accelRate * dt);
+    this.vy += (targetVy - this.vy) * Math.min(1, accelRate * dt);
 
-    if (dx !== 0 || dy !== 0) {
-      this.isMoving = true;
+    if (this.dodgeTimer <= 0) {
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+    }
+
+    const currentSpeed = Math.hypot(this.vx, this.vy);
+    this.isMoving = currentSpeed > 10;
+
+    // 6. Stride Cycle Animation Phase
+    if (this.isMoving) {
+      const strideFreq = this.isSprinting ? 16.0 : (currentSpeed > 120 ? 11.0 : 7.0);
+      this.strideTime += dt * strideFreq;
+      this.stridePhase = Math.sin(this.strideTime);
+    } else {
+      // Smoothly return stride phase to neutral
+      this.strideTime += dt * 2.0;
+      this.stridePhase *= Math.pow(0.1, dt);
+    }
+
+    // 7. Smooth Angular Rotation (Slerp / Lerp toward aim vector / movement vector)
+    if (mousePos && camera) {
+      const worldMouseX = mousePos.x + camera.x;
+      const worldMouseY = mousePos.y + camera.y;
+      this.targetFacingAngle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
+    } else if (hasInput) {
+      this.targetFacingAngle = Math.atan2(inputY, inputX);
+    }
+
+    const angleDiff = normalizeAngleDiff(this.targetFacingAngle - this.facingAngle);
+    this.facingAngle += angleDiff * Math.min(1, this.turnSpeed * dt);
+
+    // 8. Spatial Position Emission Sync
+    if (this.isMoving) {
       const distMoved = Math.hypot(this.x - this.lastEmittedX, this.y - this.lastEmittedY);
-      if (distMoved > 25) {
+      if (distMoved > 20) {
         this.lastEmittedX = this.x;
         this.lastEmittedY = this.y;
         KaustubAPI.updatePosition(Math.round(this.x), Math.round(this.y));
       }
-    } else {
-      this.isMoving = false;
     }
 
-    if (mousePos && camera) {
-      const worldMouseX = mousePos.x + camera.x;
-      const worldMouseY = mousePos.y + camera.y;
-      this.facingAngle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
-    } else if (dx !== 0 || dy !== 0) {
-      this.facingAngle = Math.atan2(dy, dx);
-    }
-
+    // 9. Combat Timers
     if (this.attackCooldown > 0) {
       this.attackCooldown -= dt;
     }
@@ -141,36 +255,35 @@ export class Player {
   attack(enemies, particleEffects) {
     if (this.attackCooldown > 0 || KaustubAPI.isChoiceBlocking()) return false;
 
-    // 3-Hit Combo sequence: Step 1 (25 dmg) -> Step 2 (32 dmg) -> Step 3 (45 dmg finisher)
+    // 3-Hit Combo Sequence: Step 1 (25 dmg) -> Step 2 (32 dmg) -> Step 3 (45 dmg finisher)
     this.comboStep = (this.comboStep % 3) + 1;
     this.comboResetTimer = 0.85;
 
     this.attackCooldown = this.attackRate;
     this.isAttacking = true;
-    this.attackAnimationTimer = 0.2;
+    this.attackAnimationTimer = 0.22;
 
-    const attackRange = 75;
+    const attackRange = 80;
     const baseDamage = 25;
-    const comboMultipliers = { 1: 1.0, 2: 1.28, 3: 1.8 };
+    const comboMultipliers = { 1: 1.0, 2: 1.3, 3: 1.85 };
     const attackDamage = Math.round(baseDamage * (comboMultipliers[this.comboStep] || 1.0));
     const attackArc = Math.PI / 2;
 
     let hitAny = false;
 
     if (particleEffects) {
-      const slashColors = { 1: '#00ffff', 2: '#00ff88', 3: '#ff0055' };
+      const slashColors = { 1: '#00f3ff', 2: '#00ff88', 3: '#ff0055' };
       particleEffects.push({
         type: 'slash',
-        x: this.x + Math.cos(this.facingAngle) * 30,
-        y: this.y + Math.sin(this.facingAngle) * 30,
+        x: this.x + Math.cos(this.facingAngle) * 32,
+        y: this.y + Math.sin(this.facingAngle) * 32,
         angle: this.facingAngle,
-        color: slashColors[this.comboStep] || '#00ffff',
-        life: 0.18,
-        maxLife: 0.18
+        color: slashColors[this.comboStep] || '#00f3ff',
+        life: 0.2,
+        maxLife: 0.2
       });
     }
 
-    // Record Aggressive choice action influence in GameState
     gameState.recordChoice('COMBAT_MELEE_ATTACK', `Executed combo strike step ${this.comboStep}`, 'AGGRESSIVE');
 
     enemies.forEach(enemy => {
@@ -181,15 +294,13 @@ export class Player {
 
         if (dist <= attackRange) {
           const angleToEnemy = Math.atan2(dy, dx);
-          let angleDiff = Math.abs(this.facingAngle - angleToEnemy);
-          while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - 2 * Math.PI);
+          let angleDiff = Math.abs(normalizeAngleDiff(this.facingAngle - angleToEnemy));
 
           if (angleDiff <= attackArc / 2) {
             enemy.takeDamage(attackDamage, 'MELEE');
             hitAny = true;
-            
-            // Knockback on hit, extra knockback on 3rd combo finisher
-            const knockbackDist = this.comboStep === 3 ? 45 : 25;
+
+            const knockbackDist = this.comboStep === 3 ? 48 : 26;
             enemy.x += Math.cos(this.facingAngle) * knockbackDist;
             enemy.y += Math.sin(this.facingAngle) * knockbackDist;
           }
@@ -202,7 +313,7 @@ export class Player {
 
   takeDamage(amount, powerSystem) {
     if (this.dodgeTimer > 0) {
-      // Invulnerable during dodge roll
+      // Invulnerable during aerodynamic dodge roll
       return 0;
     }
 
@@ -216,50 +327,10 @@ export class Player {
     return amount;
   }
 
+  /**
+   * Render humanoid protagonist directly if called as a standalone or fallback renderer
+   */
   render(ctx, camera) {
-    const screenX = this.x - camera.x;
-    const screenY = this.y - camera.y;
-
-    ctx.save();
-    ctx.translate(screenX, screenY);
-
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, 35, this.facingAngle - Math.PI / 6, this.facingAngle + Math.PI / 6);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(0, 243, 255, 0.15)';
-    ctx.fill();
-
-    if (this.isAttacking) {
-      ctx.beginPath();
-      ctx.arc(0, 0, 45, this.facingAngle - Math.PI / 4, this.facingAngle + Math.PI / 4);
-      ctx.strokeStyle = '#00ffff';
-      ctx.lineWidth = 4;
-      ctx.shadowColor = '#00ffff';
-      ctx.shadowBlur = 10;
-      ctx.stroke();
-    }
-
-    ctx.rotate(this.facingAngle);
-    ctx.beginPath();
-    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-    ctx.fillStyle = '#0a0a14';
-    ctx.fill();
-    ctx.strokeStyle = '#00f3ff';
-    ctx.lineWidth = 3;
-    ctx.shadowColor = '#00f3ff';
-    ctx.shadowBlur = 12;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(0, -6);
-    ctx.lineTo(12, 0);
-    ctx.lineTo(0, 6);
-    ctx.fillStyle = '#ff0055';
-    ctx.shadowColor = '#ff0055';
-    ctx.shadowBlur = 8;
-    ctx.fill();
-
-    ctx.restore();
+    characterRenderer.renderPlayer(ctx, this, gameState);
   }
 }

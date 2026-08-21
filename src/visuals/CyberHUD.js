@@ -1,7 +1,7 @@
 /**
  * SCAR — THE LAST CHOICE
  * CyberHUD.js — Tactical Visor, Circular Radar Minimap & Action Badges
- * Author: Ashwidha (Visual / UI / Cinematic Lead)
+ * Author: Ashwidha & Sirish (Visual / Systems Integration)
  */
 
 import { POWER_PATH } from '../core/GameState.js';
@@ -39,7 +39,7 @@ export class CyberHUD {
     // 3. Center Screen: Dynamic Aim Crosshair
     this._renderAimReticle(ctx, w / 2, h / 2);
 
-    // 4. In-World Floating Objective Indicator (Center-Left)
+    // 4. In-World Floating Objective Indicator (Center-Left) with dynamic spatial distance
     this._renderInWorldObjective(ctx, w / 2, h / 2 - 60);
 
     // 5. Bottom-Left: Circular Tactical Radar Minimap
@@ -71,7 +71,7 @@ export class CyberHUD {
     ctx.fillStyle = '#ff5555';
     ctx.fillRect(x, y + 16, barW * ghostPct, barH);
 
-    // Active Health Fill (Crimson red like reference image)
+    // Active Health Fill (Crimson red)
     ctx.fillStyle = '#ff1a35';
     ctx.shadowColor = '#ff1a35';
     ctx.shadowBlur = 8;
@@ -146,11 +146,33 @@ export class CyberHUD {
   _renderInWorldObjective(ctx, x, y) {
     ctx.save();
     const pulse = Math.sin(this._time * 5) * 3;
+    const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : null;
+
+    let distMeters = 128;
+    let isCompleted = false;
+
+    if (gameplayState && gameplayState.player) {
+      const targetX = (gameplayState.warehouseTarget && gameplayState.warehouseTarget.x) || 900;
+      const targetY = (gameplayState.warehouseTarget && gameplayState.warehouseTarget.y) || 350;
+      const targetRadius = (gameplayState.warehouseTarget && gameplayState.warehouseTarget.radius) || 50;
+
+      const px = gameplayState.player.x;
+      const py = gameplayState.player.y;
+      const dist = Math.hypot(targetX - px, targetY - py);
+
+      // Scaled so starting dist (~701px) translates to ~128m down to 0m at <= 50px radius
+      distMeters = Math.max(0, Math.round((dist - targetRadius) / 5.1));
+      if (dist <= targetRadius || gameplayState.warehouseTarget?.completed) {
+        distMeters = 0;
+        isCompleted = true;
+      }
+    }
 
     // Diamond Objective Icon
-    ctx.fillStyle = '#ffb700';
-    ctx.shadowColor = '#ffb700';
-    ctx.shadowBlur = 10;
+    const themeColor = isCompleted ? '#00ff88' : '#ffb700';
+    ctx.fillStyle = themeColor;
+    ctx.shadowColor = themeColor;
+    ctx.shadowBlur = 12;
     ctx.beginPath();
     ctx.moveTo(x - 80, y);
     ctx.lineTo(x - 74, y - 6);
@@ -159,14 +181,15 @@ export class CyberHUD {
     ctx.closePath();
     ctx.fill();
 
-    // Objective Text
+    // Objective Text Banner
     ctx.font = 'bold 12px monospace';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
-    ctx.fillText('Reach the Warehouse', x - 60, y - 2);
-    ctx.fillStyle = '#a0aec0';
-    ctx.font = '10px monospace';
-    ctx.fillText('128m', x - 60, y + 10);
+    ctx.fillText(isCompleted ? 'Warehouse Reached ✓' : 'Reach the Warehouse', x - 60, y - 2);
+
+    ctx.fillStyle = isCompleted ? '#00ff88' : '#00f3ff';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText(isCompleted ? 'ZONE SECURED' : `${distMeters}m`, x - 60, y + 12);
     ctx.restore();
   }
 
@@ -196,7 +219,7 @@ export class CyberHUD {
     // Crosshair Lines
     ctx.beginPath();
     ctx.moveTo(cx - radius, cy); ctx.lineTo(cx + radius, cy);
-    ctx.moveTo(cx, cy - radius); ctx.lineTo(cx, cy + radius);
+    ctx.moveTo(cx, cy - radius); ctx.lineTo(cx + radius, cy);
     ctx.stroke();
 
     // North Indicator
@@ -206,25 +229,57 @@ export class CyberHUD {
     ctx.fillText('N', cx, cy - radius + 11);
 
     // Player Chevron in Center
+    const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : null;
+    const playerAngle = (gameplayState?.player?.facingAngle) || 0;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(playerAngle);
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.moveTo(cx, cy - 5);
-    ctx.lineTo(cx + 4, cy + 4);
-    ctx.lineTo(cx, cy + 2);
-    ctx.lineTo(cx - 4, cy + 4);
+    ctx.moveTo(0, -6);
+    ctx.lineTo(5, 5);
+    ctx.lineTo(0, 2);
+    ctx.lineTo(-5, 5);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
+
+    // Warehouse Objective Beacon Blip on Radar
+    if (gameplayState && gameplayState.player) {
+      const targetX = 900;
+      const targetY = 350;
+      const dx = targetX - gameplayState.player.x;
+      const dy = targetY - gameplayState.player.y;
+      const radarScale = 0.045;
+      const rx = Math.max(-radius + 6, Math.min(radius - 6, dx * radarScale));
+      const ry = Math.max(-radius + 6, Math.min(radius - 6, dy * radarScale));
+
+      ctx.fillStyle = gameplayState.warehouseTarget?.completed ? '#00ff88' : '#00f3ff';
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(cx + rx, cy + ry, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Enemy Red Threat Pips
-    const threatAngle = this._time * 0.8;
-    const ex = cx + Math.cos(threatAngle) * (radius * 0.65);
-    const ey = cy + Math.sin(threatAngle) * (radius * 0.65);
-    ctx.fillStyle = '#ff0033';
-    ctx.shadowColor = '#ff0033';
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.arc(ex, ey, 3, 0, Math.PI * 2);
-    ctx.fill();
+    if (gameplayState && gameplayState.enemies && gameplayState.player) {
+      gameplayState.enemies.forEach(en => {
+        const dx = en.x - gameplayState.player.x;
+        const dy = en.y - gameplayState.player.y;
+        const rx = dx * 0.045;
+        const ry = dy * 0.045;
+        if (Math.hypot(rx, ry) < radius - 4) {
+          ctx.fillStyle = '#ff0033';
+          ctx.shadowColor = '#ff0033';
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(cx + rx, cy + ry, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+    }
 
     ctx.restore();
   }
@@ -241,7 +296,6 @@ export class CyberHUD {
       const x = startX + i * 75;
       const pulse = ab.active ? Math.sin(this._time * 4 + i) * 2 : 0;
 
-      // Hexagon / Diamond Card
       ctx.fillStyle = 'rgba(10, 16, 28, 0.85)';
       ctx.strokeStyle = ab.active ? '#00f3ff' : '#4b5563';
       ctx.lineWidth = 1.5;
@@ -250,7 +304,6 @@ export class CyberHUD {
       ctx.fill();
       ctx.stroke();
 
-      // Icon/Text
       ctx.fillStyle = ab.active ? '#00f3ff' : '#9ca3af';
       ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'center';
