@@ -170,6 +170,7 @@ class GameState {
   setPhase(phase) {
     const previous = this._state.phase;
     this._update({ phase });
+    eventBus.emit(EVENTS.PHASE_CHANGED, { phase, previous });
 
     if (phase.startsWith('LEVEL_')) {
       const level = parseInt(phase.split('_')[1]);
@@ -194,6 +195,7 @@ class GameState {
 
   updatePosition(x, y) {
     this._update({ position: { x, y } });
+    eventBus.emit(EVENTS.PLAYER_MOVED, { x, y });
   }
 
   takeDamage(amount) {
@@ -203,6 +205,7 @@ class GameState {
 
     if (health <= 0) {
       this.setPhase(GAME_PHASE.GAME_OVER);
+      eventBus.emit(EVENTS.GAME_OVER, { cause: 'death' });
     }
   }
 
