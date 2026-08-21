@@ -238,15 +238,72 @@ export class DialogueAndChoiceUI {
     };
 
     ctx.save();
-    // Atmospheric Background matched to ending tone
-    const bgColors = {
-      [ENDING.VILLAIN]: '#140004',
-      [ENDING.HERO]: '#001408',
-      [ENDING.SAVIOR]: '#000c14',
-      [ENDING.HUMAN]: '#121204',
+
+    // 1. Render Anime Ending Artwork Backdrop (if available)
+    const endingImages = {
+      [ENDING.VILLAIN]: 'src/assets/cinematics/scene8_ending_villain.jpg',
+      [ENDING.HERO]: 'src/assets/cinematics/scene7_ending_hero.jpg',
+      [ENDING.SAVIOR]: 'src/assets/cinematics/scene7_ending_hero.jpg',
+      [ENDING.HUMAN]: 'src/assets/cinematics/scene2_fist_powerless.png',
     };
-    ctx.fillStyle = bgColors[ending] || '#050508';
-    ctx.fillRect(0, 0, w, h);
+    const imgPath = endingImages[ending];
+
+    let hasImage = false;
+    if (imgPath && typeof Image !== 'undefined') {
+      if (!this.imageCache) this.imageCache = {};
+      let img = this.imageCache[imgPath];
+      if (!img) {
+        img = new Image();
+        img.src = imgPath;
+        this.imageCache[imgPath] = img;
+      }
+
+      if (img.complete && img.naturalWidth > 0 && typeof ctx.drawImage === 'function') {
+        hasImage = true;
+        const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+        const nw = img.naturalWidth * scale;
+        const nh = img.naturalHeight * scale;
+        const ox = (w - nw) / 2;
+        const oy = (h - nh) / 2;
+
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        try {
+          ctx.drawImage(img, ox, oy, nw, nh);
+        } catch (e) {}
+        ctx.restore();
+
+        // Dark gradient vignette
+        const artGrad = ctx.createLinearGradient(0, 0, 0, h);
+        artGrad.addColorStop(0, 'rgba(2, 2, 8, 0.75)');
+        artGrad.addColorStop(0.5, 'rgba(2, 2, 8, 0.55)');
+        artGrad.addColorStop(1, 'rgba(2, 2, 8, 0.9)');
+        ctx.fillStyle = artGrad;
+        ctx.fillRect(0, 0, w, h);
+      }
+    }
+
+    if (!hasImage) {
+      const bgColors = {
+        [ENDING.VILLAIN]: '#140004',
+        [ENDING.HERO]: '#001408',
+        [ENDING.SAVIOR]: '#000c14',
+        [ENDING.HUMAN]: '#121204',
+      };
+      ctx.fillStyle = bgColors[ending] || '#050508';
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // 2. Translucent Glassmorphic Center Card
+    const cardW = Math.min(880, w - 60);
+    const cardH = Math.min(540, h - 80);
+    const cardX = (w - cardW) / 2;
+    const cardY = (h - cardH) / 2;
+
+    ctx.fillStyle = 'rgba(10, 12, 22, 0.88)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 1.5;
+    this._roundRect(ctx, cardX, cardY, cardW, cardH, 12, true, true);
 
     // Title
     const titleColors = {
@@ -260,36 +317,36 @@ export class DialogueAndChoiceUI {
     ctx.fillStyle = accentColor;
     ctx.shadowColor = accentColor;
     ctx.shadowBlur = 20;
-    ctx.font = `900 ${Math.min(48, w * 0.08)}px monospace`;
+    ctx.font = `900 ${Math.min(42, w * 0.07)}px monospace`;
     ctx.textAlign = 'center';
-    ctx.fillText(`ENDING: ${content.title.toUpperCase()}`, w / 2, 85);
+    ctx.fillText(`ENDING: ${content.title.toUpperCase()}`, w / 2, cardY + 55);
 
     // Headline
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#ffffff';
-    ctx.font = `italic ${Math.min(22, w * 0.034)}px Georgia, serif`;
-    ctx.fillText(content.headline, w / 2, 125);
+    ctx.font = `italic ${Math.min(20, w * 0.032)}px Georgia, serif`;
+    ctx.fillText(content.headline, w / 2, cardY + 95);
 
     // Divider line
     ctx.strokeStyle = accentColor;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(w / 2 - 180, 145);
-    ctx.lineTo(w / 2 + 180, 145);
+    ctx.moveTo(w / 2 - 180, cardY + 115);
+    ctx.lineTo(w / 2 + 180, cardY + 115);
     ctx.stroke();
 
     // Story text
     ctx.fillStyle = '#ccd5e8';
-    ctx.font = `${Math.min(16, w * 0.026)}px Georgia, serif`;
+    ctx.font = `${Math.min(15, w * 0.024)}px Georgia, serif`;
     const lines = content.text.split('\n');
     lines.forEach((line, i) => {
-      ctx.fillText(line.trim(), w / 2, 180 + i * 26);
+      ctx.fillText(line.trim(), w / 2, cardY + 150 + i * 24);
     });
 
     // Score & Breakdown
-    const scoreY = h - 160;
+    const scoreY = cardY + cardH - 110;
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${Math.min(32, w * 0.05)}px monospace`;
+    ctx.font = `bold ${Math.min(28, w * 0.045)}px monospace`;
     ctx.fillText(`FINAL SCORE: ${(score || 0).toLocaleString()}`, w / 2, scoreY);
 
     if (breakdown) {
@@ -307,7 +364,7 @@ export class DialogueAndChoiceUI {
     // Action Prompts
     ctx.fillStyle = '#00f3ff';
     ctx.font = 'bold 15px monospace';
-    ctx.fillText('[R] PLAY AGAIN   |   [L] VIEW LEADERBOARD', w / 2, h - 35);
+    ctx.fillText('[R] PLAY AGAIN   |   [L] VIEW LEADERBOARD', w / 2, cardY + cardH - 35);
 
     ctx.restore();
   }
