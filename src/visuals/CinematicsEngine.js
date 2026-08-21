@@ -1,6 +1,6 @@
 /**
  * SCAR — THE LAST CHOICE
- * CinematicsEngine.js — Animated Anime Storyboard & Cinematic Experience
+ * CinematicsEngine.js — Animated Anime Storyboard & Google Veo Video Playback
  * Author: Ashwidha (Visual / UI / Cinematic Lead)
  */
 
@@ -21,6 +21,7 @@ export class CinematicsEngine {
     this.textProgress = 0;
     this.imageCache = {};
     this.rainDrops = [];
+    this.video = null;
 
     this._time = 0;
     this._initRain();
@@ -40,6 +41,21 @@ export class CinematicsEngine {
     }
   }
 
+  _ensureVideo() {
+    if (this.video || typeof document === 'undefined') return;
+    try {
+      this.video = document.createElement('video');
+      this.video.src = 'src/assets/cinematics/prologue_cinematic.mp4';
+      this.video.muted = true;
+      this.video.loop = true;
+      this.video.playsInline = true;
+      this.video.autoplay = true;
+      this.video.style.display = 'none';
+      document.body.appendChild(this.video);
+      this.video.play().catch(() => {});
+    } catch (e) {}
+  }
+
   startSequence(panels, phase, onComplete) {
     this.active = true;
     this.panels = panels || [];
@@ -50,6 +66,12 @@ export class CinematicsEngine {
     this.textProgress = 0;
 
     shaderPipeline.setLetterbox(1.0); // Full cinematic widescreen bars
+
+    this._ensureVideo();
+    if (this.video) {
+      this.video.currentTime = 0;
+      this.video.play().catch(() => {});
+    }
 
     if (phase === 'ATTACK') {
       shaderPipeline.triggerGlitch(0.8);
@@ -95,6 +117,12 @@ export class CinematicsEngine {
     this.panels = [];
     shaderPipeline.setLetterbox(0.0);
 
+    if (this.video) {
+      try {
+        this.video.pause();
+      } catch (e) {}
+    }
+
     if (this.onComplete) {
       this.onComplete();
     }
@@ -139,9 +167,39 @@ export class CinematicsEngine {
     ctx.fillStyle = '#020206';
     ctx.fillRect(0, 0, w, h);
 
-    // 2. Animated Ken-Burns Zoom & Pan Anime Artwork
-    let hasImage = false;
-    if (panel.image && typeof Image !== 'undefined') {
+    let hasMedia = false;
+
+    // 2. Play Google Veo Video if available
+    if (this.video && this.video.readyState >= 2 && typeof ctx.drawImage === 'function') {
+      try {
+        hasMedia = true;
+        const vw = this.video.videoWidth || 1280;
+        const vh = this.video.videoHeight || 720;
+        const scale = Math.max(w / vw, h / vh);
+        const nw = vw * scale;
+        const nh = vh * scale;
+        const ox = (w - nw) / 2;
+        const oy = (h - nh) / 2;
+
+        ctx.save();
+        ctx.globalAlpha = 0.9;
+        ctx.drawImage(this.video, ox, oy, nw, nh);
+        ctx.restore();
+
+        // Dark cinematic vignette over video
+        const artGrad = ctx.createLinearGradient(0, 0, 0, h);
+        artGrad.addColorStop(0, 'rgba(2, 2, 8, 0.65)');
+        artGrad.addColorStop(0.5, 'rgba(2, 2, 8, 0.35)');
+        artGrad.addColorStop(1, 'rgba(2, 2, 8, 0.85)');
+        ctx.fillStyle = artGrad;
+        ctx.fillRect(0, 0, w, h);
+      } catch (e) {
+        hasMedia = false;
+      }
+    }
+
+    // 3. Fallback to Animated Ken-Burns Artwork if Video not playing
+    if (!hasMedia && panel.image && typeof Image !== 'undefined') {
       if (!this.imageCache) this.imageCache = {};
       let img = this.imageCache[panel.image];
       if (!img) {
@@ -151,9 +209,8 @@ export class CinematicsEngine {
       }
 
       if (img.complete && img.naturalWidth > 0 && typeof ctx.drawImage === 'function') {
-        hasImage = true;
+        hasMedia = true;
 
-        // Dynamic Ken-Burns motion (slow zoom in from 1.0 to 1.1)
         const kbScale = 1.0 + panelProgress * 0.08;
         const kbPanX = Math.sin(panelProgress * Math.PI) * 15;
         const kbPanY = Math.cos(panelProgress * Math.PI) * 8;
@@ -166,7 +223,6 @@ export class CinematicsEngine {
         const oy = (h - nh) / 2 + kbPanY;
 
         ctx.save();
-        // Crossfade in at start of panel
         const fadeIn = Math.min(1.0, this.timer / 400);
         ctx.globalAlpha = 0.88 * fadeIn;
         try {
@@ -174,7 +230,6 @@ export class CinematicsEngine {
         } catch (e) {}
         ctx.restore();
 
-        // Dark cinematic vignette overlay
         const artGrad = ctx.createLinearGradient(0, 0, 0, h);
         artGrad.addColorStop(0, 'rgba(2, 2, 8, 0.72)');
         artGrad.addColorStop(0.5, 'rgba(2, 2, 8, 0.45)');
@@ -184,8 +239,8 @@ export class CinematicsEngine {
       }
     }
 
-    // 3. Atmospheric animated fog (if no image or layered)
-    if (!hasImage) {
+    // 4. Atmospheric animated fog (if no media)
+    if (!hasMedia) {
       const fogGrad = ctx.createRadialGradient(
         w / 2, h / 2, h * 0.1,
         w / 2, h / 2, h * 0.7
@@ -197,7 +252,7 @@ export class CinematicsEngine {
       ctx.fillRect(0, 0, w, h);
     }
 
-    // 4. Foreground Cinematic Rain Streaks
+    // 5. Foreground Cinematic Rain Streaks
     ctx.save();
     ctx.lineWidth = 1.2;
     for (const drop of this.rainDrops) {
@@ -209,7 +264,7 @@ export class CinematicsEngine {
     }
     ctx.restore();
 
-    // 5. Render Panel Typography Content
+    // 6. Render Panel Typography Content
     if (panel.style === 'title') {
       this._renderTitleCard(ctx, w, h, panel);
     } else if (panel.style === 'quote' || panel.style === 'highlight') {
@@ -218,7 +273,7 @@ export class CinematicsEngine {
       this._renderStandardCard(ctx, w, h, panel);
     }
 
-    // 6. Skip Prompt & Progress Bar
+    // 7. Skip Prompt & Progress Bar
     ctx.save();
     ctx.fillStyle = 'rgba(0, 243, 255, 0.35)';
     ctx.fillRect(w / 2 - 120, h - 30, 240 * panelProgress, 2);
