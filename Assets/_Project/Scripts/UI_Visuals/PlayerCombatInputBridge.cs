@@ -81,7 +81,12 @@ namespace Scar.UI_Visuals
             }
             
             if (_speedTrails != null) _speedTrails.Play();
+            
             TriggerCameraShake(0.3f, 0.4f);
+            if (CinematicCombatCamera.Instance != null)
+            {
+                CinematicCombatCamera.Instance.TriggerFinisherZoom();
+            }
         }
 
         private void ExecuteJump()
@@ -93,11 +98,20 @@ namespace Scar.UI_Visuals
         {
             Debug.Log("[PlayerCombatInputBridge] Dodge Initiated");
             if (_speedTrails != null) _speedTrails.Play();
+            
+            if (CinematicCombatCamera.Instance != null)
+            {
+                CinematicCombatCamera.Instance.TriggerDashFOV();
+            }
         }
 
         private void TriggerCameraShake(float intensity, float duration)
         {
-            if (VisualJuiceManager.Instance != null)
+            if (CinematicCombatCamera.Instance != null)
+            {
+                CinematicCombatCamera.Instance.TriggerCombatShake(intensity * 2f);
+            }
+            else if (VisualJuiceManager.Instance != null)
             {
                 // VisualJuiceManager.Instance.AddCameraShake(intensity, duration);
             }

@@ -62,20 +62,38 @@ namespace Scar.UI_Visuals
                 }
             }
 
-            StartCoroutine(AnimateAndReturnToPool(txtObj));
+            StartCoroutine(AnimateAndReturnToPool(txtObj, isCritical));
         }
 
-        private System.Collections.IEnumerator AnimateAndReturnToPool(GameObject obj)
+        private System.Collections.IEnumerator AnimateAndReturnToPool(GameObject obj, bool isCritical)
         {
             float duration = 1.0f;
             float elapsed = 0f;
             Vector3 startPos = obj.transform.position;
+            Vector3 targetScale = isCritical ? new Vector3(1.5f, 1.5f, 1.5f) : Vector3.one;
+            Vector3 initialScale = isCritical ? new Vector3(2.5f, 2.5f, 2.5f) : Vector3.one;
             
+            var tmp = obj.GetComponent<TextMeshPro>();
+
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
+                
                 // Float upwards
                 obj.transform.position = startPos + Vector3.up * (elapsed * 2f);
+                
+                // Scale pop
+                obj.transform.localScale = Vector3.Lerp(initialScale, targetScale, elapsed * 5f); // Pop fast, then settle
+                
+                // Alpha fade out near the end
+                if (tmp != null && elapsed > duration * 0.5f)
+                {
+                    float alpha = Mathf.Lerp(1f, 0f, (elapsed - (duration * 0.5f)) / (duration * 0.5f));
+                    Color c = tmp.color;
+                    c.a = alpha;
+                    tmp.color = c;
+                }
+
                 yield return null;
             }
 
