@@ -29,6 +29,7 @@ export const INTRO_PANELS = [
     subtext: null,
     duration: 3500,
     style: 'fade',
+    image: 'src/assets/cinematics/scene1_city_crowd.png',
   },
   {
     id: 'intro_2',
@@ -36,6 +37,7 @@ export const INTRO_PANELS = [
     subtext: null,
     duration: 3500,
     style: 'fade',
+    image: 'src/assets/cinematics/scene1_city_crowd.png',
   },
   {
     id: 'intro_3',
@@ -43,6 +45,7 @@ export const INTRO_PANELS = [
     subtext: 'You could only watch.',
     duration: 4000,
     style: 'fade',
+    image: 'src/assets/cinematics/scene1_city_crowd.png',
   },
   {
     id: 'intro_4',
@@ -50,6 +53,7 @@ export const INTRO_PANELS = [
     subtext: 'Every day, you told yourself it didn\'t matter.',
     duration: 4000,
     style: 'fade',
+    image: 'src/assets/cinematics/scene2_fist_powerless.png',
   },
   {
     id: 'intro_5',
@@ -57,6 +61,7 @@ export const INTRO_PANELS = [
     subtext: null,
     duration: 3000,
     style: 'flash',
+    image: 'src/assets/cinematics/scene3_alley_ambush.png',
   },
   {
     id: 'intro_6',
@@ -64,6 +69,7 @@ export const INTRO_PANELS = [
     subtext: 'It was the bravest thing you\'d ever done.',
     duration: 3000,
     style: 'fade',
+    image: 'src/assets/cinematics/scene3_alley_ambush.png',
   },
   {
     id: 'intro_7',
@@ -71,6 +77,7 @@ export const INTRO_PANELS = [
     subtext: null,
     duration: 3000,
     style: 'fade',
+    image: 'src/assets/cinematics/scene3_alley_ambush.png',
   },
   {
     id: 'intro_8',
@@ -78,6 +85,7 @@ export const INTRO_PANELS = [
     subtext: 'A scar.',
     duration: 4000,
     style: 'slow_reveal',
+    image: 'src/assets/cinematics/scene4_the_scar.png',
   },
   {
     id: 'intro_9',
@@ -85,6 +93,7 @@ export const INTRO_PANELS = [
     subtext: null,
     duration: 3000,
     style: 'fade',
+    image: 'src/assets/cinematics/scene4_the_scar.png',
   },
   {
     id: 'intro_10',
@@ -92,6 +101,7 @@ export const INTRO_PANELS = [
     subtext: null,
     duration: 5000,
     style: 'fade',
+    image: 'src/assets/cinematics/scene4_the_scar.png',
   },
   {
     id: 'intro_11',
@@ -99,6 +109,7 @@ export const INTRO_PANELS = [
     subtext: 'THE LAST CHOICE',
     duration: 4000,
     style: 'title',
+    image: 'src/assets/cinematics/scene4_the_scar.png',
   },
 ];
 
@@ -109,12 +120,14 @@ export const ATTACK_PANELS = [
     text: 'They appeared from the shadows.',
     subtext: 'Three of them. All powered.',
     duration: 2500,
+    image: 'src/assets/cinematics/scene3_alley_ambush.png',
   },
   {
     id: 'attack_2',
     text: 'You stood your ground.',
     subtext: null,
     duration: 2000,
+    image: 'src/assets/cinematics/scene3_alley_ambush.png',
   },
   {
     id: 'attack_3',
@@ -122,6 +135,7 @@ export const ATTACK_PANELS = [
     subtext: null,
     duration: 1500,
     style: 'beat',
+    image: 'src/assets/cinematics/scene3_alley_ambush.png',
   },
   {
     id: 'attack_4',
@@ -129,6 +143,7 @@ export const ATTACK_PANELS = [
     subtext: null,
     duration: 2500,
     style: 'impact',
+    image: 'src/assets/cinematics/scene3_alley_ambush.png',
   },
 ];
 

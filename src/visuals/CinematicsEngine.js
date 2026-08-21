@@ -97,23 +97,62 @@ export class CinematicsEngine {
     if (!this.active || !this.panels[this.currentIndex]) return;
     const panel = this.panels[this.currentIndex];
 
-    // Background Pure Black
+    // 1. Background Pure Black
     ctx.save();
     ctx.fillStyle = '#020206';
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle atmospheric animated fog gradient
-    const fogGrad = ctx.createRadialGradient(
-      w / 2, h / 2, h * 0.1,
-      w / 2, h / 2, h * 0.7
-    );
-    const pulse = Math.sin(this._time * 2) * 0.05 + 0.15;
-    fogGrad.addColorStop(0, `rgba(18, 18, 36, ${pulse})`);
-    fogGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
-    ctx.fillStyle = fogGrad;
-    ctx.fillRect(0, 0, w, h);
+    // 2. Render Anime Cutscene Background (if available)
+    let hasImage = false;
+    if (panel.image && typeof Image !== 'undefined') {
+      if (!this.imageCache) this.imageCache = {};
+      let img = this.imageCache[panel.image];
+      if (!img) {
+        img = new Image();
+        img.src = panel.image;
+        this.imageCache[panel.image] = img;
+      }
 
-    // Render Panel Content
+      if (img.complete && img.naturalWidth > 0 && typeof ctx.drawImage === 'function') {
+        hasImage = true;
+        // Cover aspect ratio
+        const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+        const nw = img.naturalWidth * scale;
+        const nh = img.naturalHeight * scale;
+        const ox = (w - nw) / 2;
+        const oy = (h - nh) / 2;
+
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        try {
+          ctx.drawImage(img, ox, oy, nw, nh);
+        } catch (e) {}
+        ctx.restore();
+
+        // Dark cinematic vignette overlay over artwork
+        const artGrad = ctx.createLinearGradient(0, 0, 0, h);
+        artGrad.addColorStop(0, 'rgba(2, 2, 8, 0.7)');
+        artGrad.addColorStop(0.5, 'rgba(2, 2, 8, 0.4)');
+        artGrad.addColorStop(1, 'rgba(2, 2, 8, 0.85)');
+        ctx.fillStyle = artGrad;
+        ctx.fillRect(0, 0, w, h);
+      }
+    }
+
+    // 3. Atmospheric animated fog gradient (if no image or layered)
+    if (!hasImage) {
+      const fogGrad = ctx.createRadialGradient(
+        w / 2, h / 2, h * 0.1,
+        w / 2, h / 2, h * 0.7
+      );
+      const pulse = Math.sin(this._time * 2) * 0.05 + 0.15;
+      fogGrad.addColorStop(0, `rgba(18, 18, 36, ${pulse})`);
+      fogGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+      ctx.fillStyle = fogGrad;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // 4. Render Panel Content
     if (panel.style === 'title') {
       this._renderTitleCard(ctx, w, h, panel);
     } else if (panel.style === 'quote' || panel.style === 'highlight') {
