@@ -225,6 +225,16 @@ export class KaustubGameplayEngine {
         KaustubAPI.npcInteracted('INFORMANT_KIRA');
         KaustubAPI.playerEnteredArea('OLD_DISTRICT');
       }
+
+      // Electrical Puddle Hazard (x: 700, y: 480)
+      if (Math.hypot(this.player.x - 700, this.player.y - 480) < 45) {
+        if (Math.random() < 0.08) {
+          this.player.takeDamage(4, this.powerSystem);
+          import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+            particleSystem.spawnDamageNumber(this.player.x, this.player.y, 'SHOCK 4!', false, '#00f3ff');
+          });
+        }
+      }
     } else if (this.currentScene === 'LEVEL_2') {
       if (this.player.x > 450) {
         KaustubAPI.playerEscapedArea('PATROL_ZONE');

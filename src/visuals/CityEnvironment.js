@@ -387,9 +387,105 @@ export class CityEnvironment {
       ctx.restore();
     }
 
-    // ─── Layer 4: Mission Waypoint Beacons ───────────────────────────────────
+    // ─── Layer 4: Interactable Objects, Clues, Hazards & Landmarks ─────────
+    this._renderWorldInteractables(ctx);
+
+    // ─── Layer 5: Mission Waypoint Beacons ───────────────────────────────────
     this._renderMissionWaypoints(ctx, activeObjectives);
 
+    ctx.restore();
+  }
+
+  _renderWorldInteractables(ctx) {
+    const time = this._time;
+
+    // 1. Security Camera Clue (x: 480, y: 220)
+    ctx.save();
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(470, 190, 20, 30);
+    ctx.fillStyle = '#00f3ff';
+    ctx.shadowColor = '#00f3ff';
+    ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(480, 220, 5, 0, Math.PI * 2); ctx.fill();
+    // Scanning cone
+    ctx.fillStyle = 'rgba(0, 243, 255, 0.1)';
+    ctx.beginPath();
+    ctx.moveTo(480, 220);
+    ctx.lineTo(430 + Math.sin(time * 2) * 30, 300);
+    ctx.lineTo(530 + Math.sin(time * 2) * 30, 300);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('[E] CAM CLUE', 480, 180);
+    ctx.restore();
+
+    // 2. Broken Cyber-Weapon Clue (x: 820, y: 350)
+    ctx.save();
+    ctx.strokeStyle = '#ffb700';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#ffb700';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(820, 350, 14 + Math.sin(time * 4) * 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#ffb700';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('[E] WEAPON CLUE', 820, 325);
+    ctx.restore();
+
+    // 3. Syndicate Access Terminal (x: 1180, y: 250)
+    ctx.save();
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#00ff88';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#00ff88';
+    ctx.shadowBlur = 14;
+    ctx.fillRect(1165, 220, 30, 45);
+    ctx.strokeRect(1165, 220, 30, 45);
+    ctx.fillStyle = '#00ff88';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('[E] TERMINAL', 1180, 210);
+    ctx.restore();
+
+    // 4. Electrical Puddle Hazard (x: 700, y: 480)
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 243, 255, 0.22)';
+    ctx.beginPath();
+    ctx.ellipse(700, 480, 50, 25, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#00f3ff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Lightning spark arcs
+    if (Math.random() < 0.6) {
+      ctx.strokeStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(680 + Math.random() * 40, 470 + Math.random() * 20);
+      ctx.lineTo(690 + Math.random() * 20, 460 + Math.random() * 20);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#ff0055';
+    ctx.font = 'bold 8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚡ HAZARD', 700, 455);
+    ctx.restore();
+
+    // 5. Warehouse Infiltration Gate (x: 1450, y: 280)
+    ctx.save();
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(1430, 160, 40, 140);
+    ctx.strokeStyle = '#ff0033';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#ff0033';
+    ctx.shadowBlur = 16;
+    ctx.strokeRect(1430, 160, 40, 140);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('WAREHOUSE GATE', 1450, 145);
     ctx.restore();
   }
 
