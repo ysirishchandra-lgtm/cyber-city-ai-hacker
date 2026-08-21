@@ -42,6 +42,7 @@ export class KaustubGameplayEngine {
   async init() {
     console.log('[KaustubEngine] Gameplay engine initialized and bound to TeamAPI & GameState');
     this.reset();
+    this.exportRenderState();
   }
 
   _setupInputs() {
@@ -82,6 +83,7 @@ export class KaustubGameplayEngine {
     this.particleEffects = [];
     this.levelTransitionTimer = 0;
     this._areaTriggersChecked = {};
+    this.exportRenderState();
   }
 
   setScene(sceneName) {
@@ -103,6 +105,7 @@ export class KaustubGameplayEngine {
         this.setupFinalBattle();
         break;
     }
+    this.exportRenderState();
   }
 
   setupLevel1() {

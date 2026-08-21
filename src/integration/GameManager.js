@@ -114,6 +114,7 @@ class GameManager {
   async startGame(playerId = null, playerName = null) {
     gameState.startGame(playerId, playerName);
     this._running = true;
+    this._startGameLoop();
     await this._runIntro();
   }
 
@@ -180,7 +181,6 @@ class GameManager {
       clearTimeout(this._cityFallbackTimer);
       this._cityFallbackTimer = null;
     }
-    this._stopGameLoop();
     gameState.setPhase(GAME_PHASE.ATTACK_SEQUENCE);
     eventBus.emit(EVENTS.ATTACK_STARTED);
     eventBus.emit(EVENTS.CINEMATIC_START, { panels: ATTACK_PANELS, phase: 'ATTACK' });
@@ -226,8 +226,6 @@ class GameManager {
   }
 
   _advanceLevel(completedLevel) {
-    this._stopGameLoop();
-
     if (completedLevel < 3) {
       this._runLevel(completedLevel + 1);
     } else {
@@ -238,7 +236,6 @@ class GameManager {
   _onMissionCompleted(missionId) {
     // Special triggers for story beats
     if (missionId === 'M1_POWER_AWAKENING') {
-      this._stopGameLoop();
       choiceSystem.presentChoice('CHOICE_POWER_AWAKENING');
       if (this._renderer) {
         const choice = choiceSystem.getPendingChoice();
@@ -262,7 +259,6 @@ class GameManager {
     }
 
     if (missionId === 'M2_HERO_CONTACT') {
-      this._stopGameLoop();
       if (this._renderer) {
         this._renderer.showDialogue(DIALOGUES.d_hero_first_contact);
       }
@@ -307,7 +303,6 @@ class GameManager {
   // ─── Phase: Final Choice ───────────────────────────────────────────────────
 
   _runFinalChoice() {
-    this._stopGameLoop();
     gameState.setPhase(GAME_PHASE.FINAL_CHOICE);
 
     const eligible = choiceSystem.getEligibleEndings();

@@ -16,41 +16,31 @@ const renderer = new PrototypeRenderer('scar-canvas');
 gameManager.registerRenderer(renderer);
 
 import { kaustubEngine } from './gameplay/KaustubGameplayEngine.js';
+import { backendClient } from './backend/BackendClient.js';
 
 // Register Kaustub's Gameplay Engine
 gameManager.registerEngine(kaustubEngine);
 
-const backendStub = {
-  async authenticate() {
-    // Returns null until Priyanshu merges — guest mode
-    return null;
-  },
-  async submitScore(payload) {
-    console.log('[Backend Stub] Score payload ready for submission:', payload);
-    console.log('[Backend Stub] Priyanshu backend not yet merged. Score not saved.');
-  },
-  async getLeaderboard() {
-    return [];
-  },
-};
-gameManager.registerBackend(backendStub);
+// Register Priyanshu's Backend
+gameManager.registerBackend(backendClient);
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 async function boot() {
   await gameManager.init();
 
-  // Try auth (Priyanshu's module will replace this)
+  // Try authenticating existing session
   let playerId = null;
   let playerName = null;
 
   try {
-    const authResult = await backendStub.authenticate();
+    const authResult = await backendClient.authenticate();
     if (authResult) {
       playerId = authResult.playerId;
       playerName = authResult.playerName;
+      console.log(`[Boot] Authenticated player: ${playerName} (${playerId})`);
     }
   } catch (err) {
-    console.warn('[Boot] Auth failed, starting as guest:', err);
+    console.warn('[Boot] Auth check failed:', err.message);
   }
 
   // Show start screen overlay in browser

@@ -291,8 +291,25 @@
       overlay.classList.add('visible');
       const list = document.getElementById('leaderboard-list');
 
-      // Fetch real data from backend if available, otherwise display clean empty status
-      list.innerHTML = '<div class="lb-empty">No players yet.</div>';
+      try {
+        const { backendClient } = await import('./src/backend/BackendClient.js');
+        const records = await backendClient.getLeaderboard();
+
+        if (records && records.length > 0) {
+          list.innerHTML = records.map(r => `
+            <div class="lb-row">
+              <span class="lb-rank">#${r.rank}</span>
+              <span class="lb-name">${r.playerName}</span>
+              <span class="lb-ending">${r.ending}</span>
+              <span class="lb-score">${r.score}</span>
+            </div>
+          `).join('');
+        } else {
+          list.innerHTML = '<div class="lb-empty">No players yet.</div>';
+        }
+      } catch (e) {
+        list.innerHTML = '<div class="lb-empty">No players yet.</div>';
+      }
     });
 
     closeBtn.addEventListener('click', () => {

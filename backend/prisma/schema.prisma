@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  email        String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  sessions     GameSession[]
+  scores       Score[]
+}
+
+model GameSession {
+  id          String    @id @default(uuid())
+  playerId    String
+  player      Player    @relation(fields: [playerId], references: [id])
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, GAME_OVER
+  scores      Score[]
+}
+
+model Score {
+  id                String      @id @default(uuid())
+  playerId          String
+  player            Player      @relation(fields: [playerId], references: [id])
+  sessionId         String
+  session           GameSession @relation(fields: [sessionId], references: [id])
+  score             Int
+  powerPath         String
+  ending            String
+  enemiesDefeated   Int
+  missionsCompleted Int
+  choicesCount      Int
+  damageReceived    Int
+  powerUsage        Int
+  completionTime    Int
+  createdAt         DateTime    @default(now())
+}
