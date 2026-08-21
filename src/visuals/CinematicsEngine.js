@@ -1,7 +1,11 @@
 /**
  * SCAR — THE LAST CHOICE
  * CinematicsEngine.js — Animated Anime Storyboard & Google Veo Video Playback
- * Author: Ashwidha (Visual / UI / Cinematic Lead)
+ * Author: Ashwidha & Sirish (Visual / Systems Integration)
+ *
+ * Plays prologue / cutscene videos with non-looping playback, listens for completion
+ * event (onended / loopPointReached), fades out the video canvas, and triggers
+ * the "ROUND 1 — FIND THE FOUR" sequence & CyberHUD boot-up.
  */
 
 import { shaderPipeline } from './ShaderPipeline.js';
@@ -24,8 +28,15 @@ export class CinematicsEngine {
     this.rainDrops = [];
     this.video = null;
 
+    // Round 1 Announcement Splash Sequence State
+    this.isAnnouncingRound1 = false;
+    this.round1Timer = 0;
+    this.round1Duration = 2.2;
+    this.speedSparks = [];
+
     this._time = 0;
     this._initRain();
+    this._initSparks();
   }
 
   _initRain() {
@@ -42,16 +53,37 @@ export class CinematicsEngine {
     }
   }
 
+  _initSparks() {
+    this.speedSparks = [];
+    for (let i = 0; i < 70; i++) {
+      this.speedSparks.push({
+        x: (Math.random() - 0.5) * 1200,
+        y: (Math.random() - 0.5) * 600,
+        vx: (Math.random() > 0.5 ? 1 : -1) * (400 + Math.random() * 600),
+        vy: (Math.random() - 0.5) * 200,
+        len: 15 + Math.random() * 40,
+        color: Math.random() > 0.4 ? '#ff9900' : '#00f3ff',
+        alpha: 0.4 + Math.random() * 0.6
+      });
+    }
+  }
+
   _ensureVideo() {
     if (this.video || typeof document === 'undefined') return;
     try {
       this.video = document.createElement('video');
       this.video.src = 'src/assets/cinematics/prologue_cinematic.mp4';
       this.video.muted = true;
-      this.video.loop = true;
+      this.video.loop = false; // Strictly non-looping playback
       this.video.playsInline = true;
       this.video.autoplay = true;
       this.video.style.display = 'none';
+      
+      // Hook into video completion event
+      this.video.onended = () => {
+        this.completeSequence();
+      };
+
       document.body.appendChild(this.video);
       this.video.play().catch(() => {});
     } catch (e) {}
@@ -70,6 +102,7 @@ export class CinematicsEngine {
 
     this._ensureVideo();
     if (this.video) {
+      this.video.loop = false;
       this.video.currentTime = 0;
       this.video.play().catch(() => {});
     }
@@ -129,171 +162,208 @@ export class CinematicsEngine {
     if (this.video) {
       try {
         this.video.pause();
+        this.video.currentTime = 0;
       } catch (e) {}
     }
 
-    if (this.onComplete) {
-      this.onComplete();
-    }
+    // Trigger "ROUND 1 — FIND THE FOUR" Announcement Splash
+    this.triggerRound1Sequence();
+  }
+
+  triggerRound1Sequence() {
+    this.isAnnouncingRound1 = true;
+    this.round1Timer = this.round1Duration;
+    shaderPipeline.triggerFlash('#00f3ff', 0.7);
+    shaderPipeline.addShake(0.6);
+    audioEngine.playPowerAwakening();
 
     import('../core/EventBus.js').then(({ eventBus, EVENTS }) => {
       eventBus.emit(EVENTS.CINEMATIC_COMPLETE);
     });
+
+    if (this.onComplete) {
+      this.onComplete();
+    }
   }
 
   update(dt) {
-    if (!this.active) return;
     this._time += dt;
+
+    if (this.isAnnouncingRound1) {
+      this.round1Timer -= dt;
+      if (this.round1Timer <= 0) {
+        this.isAnnouncingRound1 = false;
+      }
+    }
+
+    if (!this.active) return;
     this.timer += dt * 1000;
     this.textProgress = Math.min(1.0, this.textProgress + dt * 2.5);
 
     // Update cinematic rain
     for (const drop of this.rainDrops) {
-      drop.x += drop.drift * dt;
       drop.y += drop.speed * dt;
-      if (drop.y > 900) {
-        drop.y = -30;
+      drop.x += drop.drift * dt;
+      if (drop.y > 950) {
+        drop.y = -20;
         drop.x = Math.random() * 1600;
       }
-    }
-
-    const currentPanel = this.panels[this.currentIndex];
-    const duration = currentPanel?.duration || 3500;
-
-    if (this.timer >= duration) {
-      this.nextPanel();
     }
   }
 
   render(ctx, w, h) {
-    if (!this.active || !this.panels[this.currentIndex]) return;
-    const panel = this.panels[this.currentIndex];
-    const duration = panel.duration || 3500;
-    const panelProgress = Math.min(1.0, this.timer / duration);
+    if (!this.active && !this.isAnnouncingRound1) return;
 
-    // 1. Background Pure Black
+    if (this.isAnnouncingRound1) {
+      this._renderRound1Announcement(ctx, w, h);
+      return;
+    }
+
+    // 1. Render Video Frame or Animated Rainy Cyberpunk Backdrop
+    let renderedVideo = false;
+    if (this.video && this.video.readyState >= 2 && !this.video.paused) {
+      try {
+        ctx.drawImage(this.video, 0, 0, w, h);
+        renderedVideo = true;
+      } catch (e) {}
+    }
+
+    if (!renderedVideo) {
+      this._renderCinematicBackdrop(ctx, w, h);
+    }
+
+    // 2. Render Anime Storyboard Card
+    if (this.panels.length > 0 && this.currentIndex < this.panels.length) {
+      const panel = this.panels[this.currentIndex];
+      this._renderPanelCard(ctx, w, h, panel);
+    }
+
+    // 3. Skip Prompt Overlay
     ctx.save();
-    ctx.fillStyle = '#020206';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.textAlign = 'right';
+    ctx.fillText('[SPACE / CLICK] SKIP SCENE', w - 40, h - 35);
+    ctx.restore();
+  }
+
+  _renderRound1Announcement(ctx, w, h) {
+    ctx.save();
+    const progress = 1.0 - (this.round1Timer / this.round1Duration);
+    const alpha = Math.sin(Math.min(1, progress * 1.5) * Math.PI * 0.5) * (this.round1Timer < 0.35 ? this.round1Timer / 0.35 : 1.0);
+    const scale = progress < 0.2 ? 1.5 - progress * 2.5 : (progress > 0.8 ? 1.0 + (progress - 0.8) * 1.5 : 1.0);
+
+    ctx.globalAlpha = alpha;
+
+    // Dark semi-transparent radial speed vignette
+    const vigGrad = ctx.createRadialGradient(w / 2, h / 2, 80, w / 2, h / 2, w * 0.65);
+    vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+    vigGrad.addColorStop(1, 'rgba(0, 0, 0, 0.85)');
+    ctx.fillStyle = vigGrad;
     ctx.fillRect(0, 0, w, h);
 
-    let hasMedia = false;
-
-    // 2. Play Google Veo Video if available
-    if (this.video && this.video.readyState >= 2 && typeof ctx.drawImage === 'function') {
-      try {
-        hasMedia = true;
-        const vw = this.video.videoWidth || 1280;
-        const vh = this.video.videoHeight || 720;
-        const scale = Math.max(w / vw, h / vh);
-        const nw = vw * scale;
-        const nh = vh * scale;
-        const ox = (w - nw) / 2;
-        const oy = (h - nh) / 2;
-
-        ctx.save();
-        ctx.globalAlpha = 0.9;
-        ctx.drawImage(this.video, ox, oy, nw, nh);
-        ctx.restore();
-
-        // Dark cinematic vignette over video
-        const artGrad = ctx.createLinearGradient(0, 0, 0, h);
-        artGrad.addColorStop(0, 'rgba(2, 2, 8, 0.65)');
-        artGrad.addColorStop(0.5, 'rgba(2, 2, 8, 0.35)');
-        artGrad.addColorStop(1, 'rgba(2, 2, 8, 0.85)');
-        ctx.fillStyle = artGrad;
-        ctx.fillRect(0, 0, w, h);
-      } catch (e) {
-        hasMedia = false;
-      }
-    }
-
-    // 3. Fallback to Animated Ken-Burns Artwork if Video not playing
-    if (!hasMedia && panel.image && typeof Image !== 'undefined') {
-      if (!this.imageCache) this.imageCache = {};
-      let img = this.imageCache[panel.image];
-      if (!img) {
-        img = new Image();
-        img.src = panel.image;
-        this.imageCache[panel.image] = img;
-      }
-
-      if (img.complete && img.naturalWidth > 0 && typeof ctx.drawImage === 'function') {
-        hasMedia = true;
-
-        const kbScale = 1.0 + panelProgress * 0.08;
-        const kbPanX = Math.sin(panelProgress * Math.PI) * 15;
-        const kbPanY = Math.cos(panelProgress * Math.PI) * 8;
-
-        const baseScale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
-        const totalScale = baseScale * kbScale;
-        const nw = img.naturalWidth * totalScale;
-        const nh = img.naturalHeight * totalScale;
-        const ox = (w - nw) / 2 + kbPanX;
-        const oy = (h - nh) / 2 + kbPanY;
-
-        ctx.save();
-        const fadeIn = Math.min(1.0, this.timer / 400);
-        ctx.globalAlpha = 0.88 * fadeIn;
-        try {
-          ctx.drawImage(img, ox, oy, nw, nh);
-        } catch (e) {}
-        ctx.restore();
-
-        const artGrad = ctx.createLinearGradient(0, 0, 0, h);
-        artGrad.addColorStop(0, 'rgba(2, 2, 8, 0.72)');
-        artGrad.addColorStop(0.5, 'rgba(2, 2, 8, 0.45)');
-        artGrad.addColorStop(1, 'rgba(2, 2, 8, 0.88)');
-        ctx.fillStyle = artGrad;
-        ctx.fillRect(0, 0, w, h);
-      }
-    }
-
-    // 4. Atmospheric animated fog (if no media)
-    if (!hasMedia) {
-      const fogGrad = ctx.createRadialGradient(
-        w / 2, h / 2, h * 0.1,
-        w / 2, h / 2, h * 0.7
-      );
-      const pulse = Math.sin(this._time * 2) * 0.05 + 0.15;
-      fogGrad.addColorStop(0, `rgba(18, 18, 36, ${pulse})`);
-      fogGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
-      ctx.fillStyle = fogGrad;
-      ctx.fillRect(0, 0, w, h);
-    }
-
-    // 5. Foreground Cinematic Rain Streaks
-    ctx.save();
-    ctx.lineWidth = 1.2;
-    for (const drop of this.rainDrops) {
-      ctx.strokeStyle = `rgba(180, 230, 255, ${drop.alpha * 0.6})`;
+    // Explosive Speed Line Sparks
+    for (const spark of this.speedSparks) {
+      const sx = w / 2 + spark.x + spark.vx * progress * 0.8;
+      const sy = h / 2 + spark.y + spark.vy * progress * 0.8;
+      ctx.strokeStyle = spark.color;
+      ctx.shadowColor = spark.color;
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.moveTo(drop.x, drop.y);
-      ctx.lineTo(drop.x - 4, drop.y + drop.len);
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + (spark.vx > 0 ? spark.len : -spark.len), sy);
       ctx.stroke();
     }
-    ctx.restore();
 
-    // 6. Render Panel Typography Content
+    // Center Banner Horizon Bar
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(scale, scale);
+
+    const bannerW = Math.min(880, w * 0.85);
+    const bannerH = 150;
+
+    // Outer Jagged Banner Frame
+    ctx.fillStyle = 'rgba(6, 10, 20, 0.94)';
+    ctx.strokeStyle = '#ff8800';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#ff8800';
+    ctx.shadowBlur = 22;
+
+    ctx.beginPath();
+    ctx.moveTo(-bannerW / 2 - 25, 0);
+    ctx.lineTo(-bannerW / 2, -bannerH / 2);
+    ctx.lineTo(bannerW / 2, -bannerH / 2);
+    ctx.lineTo(bannerW / 2 + 25, 0);
+    ctx.lineTo(bannerW / 2, bannerH / 2);
+    ctx.lineTo(-bannerW / 2, bannerH / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Top & Bottom Accent Ribbons
+    ctx.strokeStyle = '#00f3ff';
+    ctx.shadowColor = '#00f3ff';
+    ctx.shadowBlur = 16;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-bannerW / 2 + 30, -bannerH / 2);
+    ctx.lineTo(bannerW / 2 - 30, -bannerH / 2);
+    ctx.moveTo(-bannerW / 2 + 30, bannerH / 2);
+    ctx.lineTo(bannerW / 2 - 30, bannerH / 2);
+    ctx.stroke();
+
+    // Text: "ROUND 1" (Cyan & Orange)
+    ctx.font = `italic 900 ${Math.min(96, w * 0.09)}px 'Orbitron', monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Cyan "ROUND"
+    ctx.fillStyle = '#00f3ff';
+    ctx.shadowColor = '#00f3ff';
+    ctx.shadowBlur = 26;
+    ctx.fillText('ROUND 1', 0, -18);
+
+    // Subtitle: "FIND THE FOUR"
+    ctx.font = `900 ${Math.min(32, w * 0.035)}px 'Orbitron', monospace`;
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#ff8800';
+    ctx.shadowBlur = 14;
+    ctx.fillText('FIND THE FOUR', 0, 42);
+
+    ctx.restore();
+    ctx.restore();
+  }
+
+  _renderCinematicBackdrop(ctx, w, h) {
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+    bgGrad.addColorStop(0, '#04040a');
+    bgGrad.addColorStop(0.5, '#0a0d1a');
+    bgGrad.addColorStop(1, '#020205');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Rainy atmosphere
+    ctx.strokeStyle = 'rgba(0, 243, 255, 0.3)';
+    ctx.lineWidth = 1.5;
+    for (const drop of this.rainDrops) {
+      ctx.beginPath();
+      ctx.moveTo(drop.x, drop.y);
+      ctx.lineTo(drop.x - 3, drop.y + drop.len);
+      ctx.stroke();
+    }
+  }
+
+  _renderPanelCard(ctx, w, h, panel) {
+    if (!panel) return;
     if (panel.style === 'title') {
       this._renderTitleCard(ctx, w, h, panel);
-    } else if (panel.style === 'quote' || panel.style === 'highlight') {
+    } else if (panel.style === 'quote') {
       this._renderQuoteCard(ctx, w, h, panel);
     } else {
       this._renderStandardCard(ctx, w, h, panel);
     }
-
-    // 7. Skip Prompt & Progress Bar
-    ctx.save();
-    ctx.fillStyle = 'rgba(0, 243, 255, 0.35)';
-    ctx.fillRect(w / 2 - 120, h - 30, 240 * panelProgress, 2);
-
-    ctx.fillStyle = 'rgba(120, 140, 180, 0.75)';
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText('[SPACE / CLICK] SKIP', w - 40, h - 35);
-    ctx.restore();
-
-    ctx.restore();
   }
 
   _renderTitleCard(ctx, w, h, panel) {

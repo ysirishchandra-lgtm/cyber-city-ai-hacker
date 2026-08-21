@@ -56,14 +56,16 @@ export class CyberHUD {
     const hpPct = Math.max(0, Math.min(1, hp / maxHp));
     const ghostPct = Math.max(0, Math.min(1, this._ghostHealth / maxHp));
 
-    // HEALTH Label
+    // CYBERWARE INTEGRITY/HEALTH Label
     ctx.fillStyle = '#00f3ff';
     ctx.font = 'bold 11px monospace';
-    ctx.fillText('HEALTH', x, y + 10);
+    ctx.shadowColor = '#00f3ff';
+    ctx.shadowBlur = 6;
+    ctx.fillText('CYBERWARE INTEGRITY/HEALTH', x, y + 10);
 
-    // Health Bar Gauge
-    const barW = 180;
-    const barH = 7;
+    // Health Bar Gauge (Cyan / Crimson Fill)
+    const barW = 200;
+    const barH = 8;
     ctx.fillStyle = '#0d0d18';
     ctx.fillRect(x, y + 16, barW, barH);
 
@@ -71,74 +73,54 @@ export class CyberHUD {
     ctx.fillStyle = '#ff5555';
     ctx.fillRect(x, y + 16, barW * ghostPct, barH);
 
-    // Active Health Fill (Crimson red)
-    ctx.fillStyle = '#ff1a35';
-    ctx.shadowColor = '#ff1a35';
+    // Active Health Fill (Vibrant Cyan/Crimson)
+    ctx.fillStyle = '#00f3ff';
+    ctx.shadowColor = '#00f3ff';
     ctx.shadowBlur = 8;
     ctx.fillRect(x, y + 16, barW * hpPct, barH);
 
     // STAMINA Label & Bar
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#00f3ff';
-    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 10px monospace';
     ctx.fillText('STAMINA', x, y + 38);
 
     ctx.fillStyle = '#0d0d18';
-    ctx.fillRect(x, y + 44, barW * 0.7, 6);
-    ctx.fillStyle = '#00f3ff';
-    ctx.shadowColor = '#00f3ff';
+    ctx.fillRect(x, y + 44, barW * 0.75, 6);
+    ctx.fillStyle = '#ffd000';
+    ctx.shadowColor = '#ffd000';
     ctx.shadowBlur = 6;
-    ctx.fillRect(x, y + 44, barW * 0.7 * (state.stamina ? state.stamina / 100 : 1.0), 6);
-
-    // FOCUS Pips
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#6b7280';
-    ctx.font = 'bold 10px monospace';
-    ctx.fillText('FOCUS', x, y + 64);
-    for (let i = 0; i < 4; i++) {
-      ctx.strokeStyle = '#00f3ff';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x + 48 + i * 14, y + 56, 10, 8);
-      if (i < 2) {
-        ctx.fillStyle = 'rgba(0, 243, 255, 0.6)';
-        ctx.fillRect(x + 48 + i * 14, y + 56, 10, 8);
-      }
-    }
+    ctx.fillRect(x, y + 44, barW * 0.75 * (state.stamina ? state.stamina / 100 : 1.0), 6);
 
     ctx.restore();
   }
 
   _renderTopRightStatus(ctx, missionSystem, state, x, y) {
     ctx.save();
-    // TIME REMAINING (Cyber Clock)
+    // DEADLINE TIMER Header
     ctx.textAlign = 'right';
-    ctx.fillStyle = '#00f3ff';
-    ctx.font = 'bold 11px monospace';
-    ctx.fillText('TIME REMAINING', x + 250, y + 10);
+    ctx.fillStyle = '#a0aec0';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText('DEADLINE TIMER', x + 250, y + 10);
 
-    const hours = typeof state.hoursRemaining === 'number' ? state.hoursRemaining : 47;
+    const hours = typeof state.hoursRemaining === 'number' ? state.hoursRemaining : 7;
     const mins = Math.floor((this._time * 12) % 60);
     const secs = Math.floor((this._time * 35) % 60);
-    const timeStr = `${Math.floor(hours)}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    const timeStr = `${String(Math.floor(hours)).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} / 30:00`;
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px monospace';
-    ctx.fillText(`${timeStr} 🕒`, x + 250, y + 32);
+    // Cyber Timer Badge Box
+    ctx.fillStyle = 'rgba(6, 12, 24, 0.85)';
+    ctx.strokeStyle = '#00f3ff';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#00f3ff';
+    ctx.shadowBlur = 8;
+    ctx.fillRect(x + 55, y + 14, 195, 24);
+    ctx.strokeRect(x + 55, y + 14, 195, 24);
 
-    // Active Mission Title
-    const activeMissions = missionSystem ? missionSystem.getActiveMissions() : [];
-    if (activeMissions && activeMissions.length > 0) {
-      const mission = activeMissions[0];
-      ctx.fillStyle = '#ffb700';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText(`▶ ${mission.title.toUpperCase()}`, x + 250, y + 52);
-
-      if (mission.objectives && mission.objectives[0]) {
-        ctx.fillStyle = '#cccccc';
-        ctx.font = '10px monospace';
-        ctx.fillText(mission.objectives[0].description, x + 250, y + 68);
-      }
-    }
+    ctx.fillStyle = '#00f3ff';
+    ctx.font = 'bold 15px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(timeStr, x + 152, y + 31);
 
     ctx.restore();
   }
@@ -168,28 +150,51 @@ export class CyberHUD {
       }
     }
 
-    // Diamond Objective Icon
-    const themeColor = isCompleted ? '#00ff88' : '#ffb700';
-    ctx.fillStyle = themeColor;
+    // Tactical Cyan Hexagonal Visor Objective Badge: REACH THE WAREHOUSE [128m]
+    const badgeW = 220;
+    const badgeH = 28;
+    const badgeX = x - badgeW / 2;
+    const badgeY = y - 30;
+
+    const themeColor = isCompleted ? '#00ff88' : '#00f3ff';
+
+    // Badge Frame
+    ctx.fillStyle = 'rgba(6, 12, 22, 0.88)';
+    ctx.strokeStyle = themeColor;
+    ctx.lineWidth = 1.5;
     ctx.shadowColor = themeColor;
+    ctx.shadowBlur = 10;
+
+    ctx.beginPath();
+    ctx.moveTo(badgeX - 10, badgeY + badgeH / 2);
+    ctx.lineTo(badgeX, badgeY);
+    ctx.lineTo(badgeX + badgeW, badgeY);
+    ctx.lineTo(badgeX + badgeW + 10, badgeY + badgeH / 2);
+    ctx.lineTo(badgeX + badgeW, badgeY + badgeH);
+    ctx.lineTo(badgeX, badgeY + badgeH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Objective Text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const objText = isCompleted ? 'WAREHOUSE REACHED [0m]' : `REACH THE WAREHOUSE [${distMeters}m]`;
+    ctx.fillText(objText, x, badgeY + badgeH / 2);
+
+    // Floating Downward Diamond Pointer
+    ctx.fillStyle = themeColor;
     ctx.shadowBlur = 12;
     ctx.beginPath();
-    ctx.moveTo(x - 80, y);
-    ctx.lineTo(x - 74, y - 6);
-    ctx.lineTo(x - 68, y);
-    ctx.lineTo(x - 74, y + 6);
+    ctx.moveTo(x, badgeY + badgeH + 6 + pulse * 0.5);
+    ctx.lineTo(x + 5, badgeY + badgeH + 12 + pulse * 0.5);
+    ctx.lineTo(x, badgeY + badgeH + 18 + pulse * 0.5);
+    ctx.lineTo(x - 5, badgeY + badgeH + 12 + pulse * 0.5);
     ctx.closePath();
     ctx.fill();
 
-    // Objective Text Banner
-    ctx.font = 'bold 12px monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'left';
-    ctx.fillText(isCompleted ? 'Warehouse Reached ✓' : 'Reach the Warehouse', x - 60, y - 2);
-
-    ctx.fillStyle = isCompleted ? '#00ff88' : '#00f3ff';
-    ctx.font = 'bold 11px monospace';
-    ctx.fillText(isCompleted ? 'ZONE SECURED' : `${distMeters}m`, x - 60, y + 12);
     ctx.restore();
   }
 
