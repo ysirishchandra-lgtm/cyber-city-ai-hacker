@@ -31,13 +31,39 @@ namespace Scar.UI_Visuals
 
         private void OnEnable()
         {
-            // Assuming an event exists when an enemy is hit
-            // EventBus.Subscribe<GameEvents.EnemyHitEvent>(OnEnemyHit);
+            if (StyleRatingSystem.OnStyleRankChanged != null)
+                StyleRatingSystem.OnStyleRankChanged += OnStyleRankUpdated;
+            else
+                StyleRatingSystem.OnStyleRankChanged = OnStyleRankUpdated;
+
+            if (Hurtbox3D.OnTakeDamage != null)
+                Hurtbox3D.OnTakeDamage += OnEnemyDamaged;
+            else
+                Hurtbox3D.OnTakeDamage = OnEnemyDamaged;
         }
 
         private void OnDisable()
         {
-            // EventBus.Unsubscribe<GameEvents.EnemyHitEvent>(OnEnemyHit);
+            StyleRatingSystem.OnStyleRankChanged -= OnStyleRankUpdated;
+            Hurtbox3D.OnTakeDamage -= OnEnemyDamaged;
+        }
+
+        private void OnStyleRankUpdated(string rank, float multiplier)
+        {
+            if (_comboGradeText != null)
+            {
+                _comboGradeText.text = rank;
+                // Add color pop depending on rank...
+            }
+        }
+
+        private void OnEnemyDamaged(Vector3 position, int damage, bool isCritical)
+        {
+            RegisterHit(1);
+            if (FloatingTextManager.Instance != null)
+            {
+                FloatingTextManager.Instance.SpawnDamageNumber(position, damage, isCritical);
+            }
         }
 
         private void Update()

@@ -5,13 +5,21 @@ namespace Scar.UI_Visuals
 {
     public class PlayerCombatInputBridge : MonoBehaviour
     {
-        [Header("Components")]
-        // Assume these components exist or will be injected by backend engine
-        // [SerializeField] private CombatController3D _combatController;
+        [Header("Backend Connections")]
+        [SerializeField] private CombatController3D _combatController;
+        [SerializeField] private TargetLockSystem _targetLockSystem;
         
         [Header("Effects Hooks")]
         [SerializeField] private GameObject _hitSparksPrefab;
         [SerializeField] private ParticleSystem _speedTrails;
+
+        private void Start()
+        {
+            if (CharacterArchetypeManager.Instance != null)
+            {
+                CharacterArchetypeManager.Instance.SelectArchetype(ArchetypeType.Volt);
+            }
+        }
 
         private void Update()
         {
@@ -27,10 +35,16 @@ namespace Scar.UI_Visuals
                 ExecuteLightAttack();
             }
 
-            // Heavy / Special Attack (Right Click / Triangle / Y)
+            // Heavy / Special Attack / Flash Dash (Right Click / Triangle / Y)
             if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.JoystickButton3))
             {
                 ExecuteHeavyAttack();
+            }
+
+            // Target Lock (Tab)
+            if (Input.GetKeyDown(KeyCode.Tab) && _targetLockSystem != null)
+            {
+                // Toggle is handled inside TargetLockSystem, but we could trigger it here if refactored.
             }
         }
 
@@ -52,39 +66,37 @@ namespace Scar.UI_Visuals
         private void ExecuteLightAttack()
         {
             Debug.Log("[PlayerCombatInputBridge] Light Attack Initiated");
-            // _combatController?.ExecuteAttack();
+            if (_combatController != null) _combatController.ExecuteAttack();
             
-            // Visual Feedback
             TriggerCameraShake(0.1f, 0.2f);
         }
 
         private void ExecuteHeavyAttack()
         {
-            Debug.Log("[PlayerCombatInputBridge] Heavy/Special Attack Initiated");
-            // Validate energy here if _combatController exists
+            Debug.Log("[PlayerCombatInputBridge] Flash Dash Initiated");
+            if (_combatController != null)
+            {
+                _combatController.ConsumeEnergy(20f);
+                _combatController.ExecuteSpecial();
+            }
             
-            // Visual Feedback
+            if (_speedTrails != null) _speedTrails.Play();
             TriggerCameraShake(0.3f, 0.4f);
         }
 
         private void ExecuteJump()
         {
             Debug.Log("[PlayerCombatInputBridge] Jump/Traversal Initiated");
-            // Add environment check for TraversableLedge
         }
 
         private void ExecuteDodge()
         {
             Debug.Log("[PlayerCombatInputBridge] Dodge Initiated");
-            if (_speedTrails != null)
-            {
-                _speedTrails.Play();
-            }
+            if (_speedTrails != null) _speedTrails.Play();
         }
 
         private void TriggerCameraShake(float intensity, float duration)
         {
-            // Assuming visual juice manager handles trauma/shake
             if (VisualJuiceManager.Instance != null)
             {
                 // VisualJuiceManager.Instance.AddCameraShake(intensity, duration);
