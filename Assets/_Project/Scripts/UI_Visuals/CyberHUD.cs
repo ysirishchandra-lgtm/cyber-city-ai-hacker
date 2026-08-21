@@ -16,6 +16,14 @@ namespace Scar.UI
     /// </summary>
     public class CyberHUD : MonoBehaviour
     {
+        public static CyberHUD Instance { get; private set; }
+
+        private void Awake()
+        {
+            if (Instance == null) Instance = this;
+            else Destroy(gameObject);
+        }
+
         [Header("Player Vital Visor")]
         [SerializeField] private Slider _healthSlider;
         [SerializeField] private Slider _ghostHealthSlider;
@@ -124,7 +132,12 @@ namespace Scar.UI
             }
         }
 
-        // ─── Lifecycle & Subscriptions ─────────────────────────────────────────────
+        public void ActivateHUD()
+        {
+            gameObject.SetActive(true);
+        }
+
+        // ─── Lifecycle & Subscriptions ────────────────────────────────────────────────────────
 
         private void RegisterEventSubscriptions()
         {
