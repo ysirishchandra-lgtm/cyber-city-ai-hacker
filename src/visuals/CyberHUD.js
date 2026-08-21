@@ -12,12 +12,14 @@ export class CyberHUD {
     this._time = 0;
 
     // Mobile Virtual Touch State
-    this.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-    this.virtualJoystick = { active: false, x: 120, y: window.innerHeight - 120, radius: 45, touchX: 0, touchY: 0 };
+    this.isTouchDevice = typeof window !== 'undefined' && (('ontouchstart' in window) || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0));
+    const winW = typeof window !== 'undefined' ? window.innerWidth : 1280;
+    const winH = typeof window !== 'undefined' ? window.innerHeight : 720;
+    this.virtualJoystick = { active: false, x: 120, y: winH - 120, radius: 45, touchX: 0, touchY: 0 };
     this.virtualButtons = {
-      attack: { x: window.innerWidth - 80, y: window.innerHeight - 100, radius: 36, label: 'ATK' },
-      power: { x: window.innerWidth - 160, y: window.innerHeight - 80, radius: 32, label: 'PWR' },
-      sprint: { x: window.innerWidth - 70, y: window.innerHeight - 180, radius: 28, label: 'RUN' },
+      attack: { x: winW - 80, y: winH - 100, radius: 36, label: 'ATK' },
+      power: { x: winW - 160, y: winH - 80, radius: 32, label: 'PWR' },
+      sprint: { x: winW - 70, y: winH - 180, radius: 28, label: 'RUN' },
     };
   }
 

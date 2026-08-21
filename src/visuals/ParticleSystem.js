@@ -30,8 +30,8 @@ export class ParticleSystem {
   update(dt, camera = { x: 0, y: 0 }) {
     // 1. Update rain
     if (this.weatherEnabled) {
-      const viewW = window.innerWidth;
-      const viewH = window.innerHeight;
+      const viewW = typeof window !== 'undefined' ? window.innerWidth : 1280;
+      const viewH = typeof window !== 'undefined' ? window.innerHeight : 720;
 
       for (const drop of this.rainDrops) {
         drop.x += drop.drift * dt;
@@ -54,7 +54,7 @@ export class ParticleSystem {
       }
     }
 
-    // 2. Update dynamic particles
+    // 2. Update dynamic particles with maximum performance cap
     this.particles = this.particles.filter(p => {
       p.life -= dt;
       p.x += p.vx * dt;
@@ -76,6 +76,11 @@ export class ParticleSystem {
 
       return p.life > 0;
     });
+
+    // Hard particle cap to prevent memory bloat
+    if (this.particles.length > 350) {
+      this.particles = this.particles.slice(this.particles.length - 350);
+    }
   }
 
   // ─── Emitters ──────────────────────────────────────────────────────────────

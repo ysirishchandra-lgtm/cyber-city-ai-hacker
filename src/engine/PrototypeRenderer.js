@@ -38,7 +38,7 @@ export class PrototypeRenderer {
 
     // Camera
     this.camera = { x: 0, y: 0 };
-    this._lastTime = performance.now();
+    this._lastTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
   async init() {
@@ -59,12 +59,14 @@ export class PrototypeRenderer {
       shaderPipeline.triggerFlash('#00f3ff', 0.85);
       shaderPipeline.triggerGlitch(0.7);
       shaderPipeline.addShake(0.8);
+      const winW = typeof window !== 'undefined' ? window.innerWidth : 1280;
+      const winH = typeof window !== 'undefined' ? window.innerHeight : 720;
       if (data && data.path === POWER_PATH.AGGRESSIVE) {
-        particleSystem.spawnNova(window.innerWidth / 2, window.innerHeight / 2, 260, '#ff2200');
+        particleSystem.spawnNova(winW / 2, winH / 2, 260, '#ff2200');
       } else if (data && data.path === POWER_PATH.PROTECTIVE) {
-        particleSystem.spawnBarrier(window.innerWidth / 2, window.innerHeight / 2, 5.0, '#0099ff');
+        particleSystem.spawnBarrier(winW / 2, winH / 2, 5.0, '#0099ff');
       } else {
-        particleSystem.spawnStasisGrid(window.innerWidth / 2, window.innerHeight / 2, 300, '#00ff88');
+        particleSystem.spawnStasisGrid(winW / 2, winH / 2, 300, '#00ff88');
       }
     });
 
@@ -73,8 +75,8 @@ export class PrototypeRenderer {
 
   _resize() {
     if (!this._canvas) return;
-    this._canvas.width = window.innerWidth;
-    this._canvas.height = window.innerHeight;
+    this._canvas.width = typeof window !== 'undefined' ? window.innerWidth : 1280;
+    this._canvas.height = typeof window !== 'undefined' ? window.innerHeight : 720;
   }
 
   // ─── Cinematic Panels ───────────────────────────────────────────────────────
@@ -126,7 +128,7 @@ export class PrototypeRenderer {
     dialogueAndChoiceUI.update(dt);
 
     // Synchronize camera with gameplay if available
-    const gameplayState = window.__SCAR_GAMEPLAY_STATE__;
+    const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : (typeof globalThis !== 'undefined' ? globalThis.__SCAR_GAMEPLAY_STATE__ : null);
     if (gameplayState && gameplayState.camera) {
       this.camera.x += (gameplayState.camera.x - this.camera.x) * 0.15;
       this.camera.y += (gameplayState.camera.y - this.camera.y) * 0.15;

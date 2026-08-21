@@ -118,8 +118,8 @@ export class CityEnvironment {
   }
 
   render(ctx, camera = { x: 0, y: 0 }, activeObjectives = []) {
-    const viewW = window.innerWidth;
-    const viewH = window.innerHeight;
+    const viewW = typeof window !== 'undefined' ? window.innerWidth : 1280;
+    const viewH = typeof window !== 'undefined' ? window.innerHeight : 720;
 
     // ─── Layer 1: Parallax Skyline & Clouds ────────────────────────────────────
     ctx.save();
