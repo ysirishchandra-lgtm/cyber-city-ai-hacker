@@ -124,15 +124,82 @@ namespace Scar.UI_Visuals
             if (_lobbyCanvas != null) _lobbyCanvas.SetActive(false);
             if (_gameplayCanvas != null) _gameplayCanvas.SetActive(true);
 
+            // Step 2: Fade to 3D Scene / Spawn Character so camera can align
+            if (LevelManager.Instance != null)
+            {
+                LevelManager.Instance.SpawnCharacter(characterId);
+            }
+            else
+            {
+                Debug.Log($"[Round1CutsceneController] TransitionToGameplay: LevelManager.Instance.SpawnCharacter({characterId})");
+            }
+
+            // Step 3: "ROUND 1" Announcement Overlay
+            yield return StartCoroutine(PlayRound1Announcement());
+
+            // Step 4: Game Start / HUD Boot
             OnCutsceneFinished(characterId);
 
             _isPlaying = false;
         }
 
+        private IEnumerator PlayRound1Announcement()
+        {
+            // Dynamically create a "ROUND 1" banner text overlay for the sequence
+            GameObject bannerObj = new GameObject("Round1_Banner", typeof(RectTransform), typeof(TextMeshProUGUI));
+            bannerObj.transform.SetParent(this.transform, false);
+            
+            RectTransform rt = bannerObj.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(800, 200);
+            
+            TextMeshProUGUI text = bannerObj.GetComponent<TextMeshProUGUI>();
+            text.text = "ROUND 1";
+            text.fontSize = 120;
+            text.fontStyle = FontStyles.Bold | FontStyles.Italic;
+            text.alignment = TextAlignmentOptions.Center;
+            text.color = new Color(1f, 0.1f, 0.1f, 0f); // Neon Red, start transparent
+
+            // Sound Effect Trigger
+            Debug.Log("[Audio] PlaySFX: 'Round1_Announce'");
+            // AudioManager.Instance.PlaySFX("Round1_Announce");
+
+            // Dramatic camera zoom-in/punch simulation (assuming Cinemachine)
+            if (VisualJuiceManager.Instance != null)
+            {
+                // VisualJuiceManager.Instance.AddCameraShake(0.5f, 0.5f);
+            }
+
+            // Screen-space speed-line pulse (simulated by fast scale and fade-in)
+            float elapsed = 0f;
+            while (elapsed < 0.2f)
+            {
+                elapsed += Time.deltaTime;
+                text.color = new Color(1f, 0.1f, 0.1f, elapsed / 0.2f);
+                rt.localScale = Vector3.Lerp(new Vector3(2f, 2f, 2f), Vector3.one, elapsed / 0.2f);
+                yield return null;
+            }
+
+            // Hold for ~1.2 seconds
+            yield return new WaitForSeconds(1.2f);
+
+            // Dynamic slide-out / flash dissolve
+            elapsed = 0f;
+            while (elapsed < 0.3f)
+            {
+                elapsed += Time.deltaTime;
+                text.color = new Color(1f, 0.1f, 0.1f, 1f - (elapsed / 0.3f));
+                rt.localScale = Vector3.Lerp(Vector3.one, new Vector3(3f, 1f, 1f), elapsed / 0.3f);
+                yield return null;
+            }
+
+            Destroy(bannerObj);
+        }
+
         private void OnCutsceneFinished(string characterId)
         {
-            EventBus.Publish(new GameEvents.PhaseChangedEvent { NewPhase = GamePhase.LEVEL_1 });
-
+            // Boot HUD
             if (CyberHUD.Instance != null)
             {
                 CyberHUD.Instance.ActivateHUD();
@@ -145,14 +212,9 @@ namespace Scar.UI_Visuals
                 _cyberHUD.StartDeadlineTimer(480f);
             }
 
-            if (LevelManager.Instance != null)
-            {
-                LevelManager.Instance.SpawnCharacter(characterId);
-            }
-            else
-            {
-                Debug.Log($"[Round1CutsceneController] OnCutsceneFinished: LevelManager.Instance.SpawnCharacter({characterId})");
-            }
+            // Unlock Character Input / Phase 1
+            EventBus.Publish(new GameEvents.PhaseChangedEvent { NewPhase = GamePhase.LEVEL_1 });
+            Debug.Log("[Round1CutsceneController] Character input officially unlocked!");
         }
 
         private IEnumerator FadeCanvasGroup(CanvasGroup cg, float startAlpha, float endAlpha, float duration)
