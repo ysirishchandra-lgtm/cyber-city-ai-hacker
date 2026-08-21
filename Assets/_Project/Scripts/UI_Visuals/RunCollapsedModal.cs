@@ -63,7 +63,7 @@ namespace Scar.UI_Visuals
 
         private void HideModal()
         {
-            if (_modalContainer != null) _modalContainer.SetActive(false);
+            StartCoroutine(FadeOutModal());
         }
 
         private System.Collections.IEnumerator FadeInModal()
@@ -82,6 +82,25 @@ namespace Scar.UI_Visuals
                 yield return null;
             }
             canvasGroup.alpha = 1f;
+        }
+
+        private System.Collections.IEnumerator FadeOutModal()
+        {
+            var canvasGroup = _modalContainer.GetComponent<CanvasGroup>();
+            if (canvasGroup != null)
+            {
+                float elapsed = 0f;
+                float duration = 0.3f;
+                while (elapsed < duration)
+                {
+                    elapsed += Time.deltaTime;
+                    canvasGroup.alpha = Mathf.Lerp(1f, 0f, elapsed / duration);
+                    yield return null;
+                }
+                canvasGroup.alpha = 0f;
+            }
+            
+            if (_modalContainer != null) _modalContainer.SetActive(false);
         }
     }
 }

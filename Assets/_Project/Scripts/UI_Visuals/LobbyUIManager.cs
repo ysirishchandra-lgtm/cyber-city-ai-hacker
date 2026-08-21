@@ -93,12 +93,25 @@ namespace Scar.UI_Visuals
 
             if (_themeGlowImage != null)
             {
-                _themeGlowImage.color = new Color(profile.themeColor.r, profile.themeColor.g, profile.themeColor.b, 0.3f);
+                StartCoroutine(ShiftThemeColor(new Color(profile.themeColor.r, profile.themeColor.g, profile.themeColor.b, 0.3f), 0.3f));
             }
 
             // Play a snappy UI sound and small pop animation here for game feel
             // AudioManager.Play("UI_Hover");
             PlayCharacterSwapAnimation();
+        }
+
+        private System.Collections.IEnumerator ShiftThemeColor(Color targetColor, float duration)
+        {
+            Color startColor = _themeGlowImage.color;
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                _themeGlowImage.color = Color.Lerp(startColor, targetColor, elapsed / duration);
+                yield return null;
+            }
+            _themeGlowImage.color = targetColor;
         }
 
         private void PlayCharacterSwapAnimation()
@@ -112,14 +125,31 @@ namespace Scar.UI_Visuals
             var selectedCharacter = _characters[_currentIndex];
             Debug.Log($"[LobbyUIManager] Starting run with {selectedCharacter.characterName}");
             
+            // Visual juice on start
+            StartCoroutine(ScalePunch(_startRunBtn.transform, 1.2f, 0.1f));
+            StartCoroutine(FadeOutLobby());
+        }
+
+        private System.Collections.IEnumerator FadeOutLobby()
+        {
+            var canvasGroup = GetComponent<CanvasGroup>();
+            if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
+
+            float elapsed = 0f;
+            float duration = 0.5f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                canvasGroup.alpha = Mathf.Lerp(1f, 0f, elapsed / duration);
+                yield return null;
+            }
+            canvasGroup.alpha = 0f;
+            
             // Link to GameState
-            // GameManager.Instance.GameState.SetPlayerIdentity(..., selectedCharacter.characterId);
+            // GameManager.Instance.GameState.SetPlayerIdentity(..., _characters[_currentIndex].characterId);
             
             // Transition to Level 1
             // EventBus.Publish(new GameEvents.PhaseChangedEvent { NewPhase = GamePhase.GAMEPLAY });
-            
-            // Visual juice on start
-            StartCoroutine(ScalePunch(_startRunBtn.transform, 1.2f, 0.1f));
         }
 
         private System.Collections.IEnumerator ScalePunch(Transform target, float punchScale, float duration)
