@@ -135,6 +135,37 @@ namespace Scar.UI
         public void ActivateHUD()
         {
             gameObject.SetActive(true);
+            StartCoroutine(BootSequence());
+        }
+
+        private IEnumerator BootSequence()
+        {
+            // Glitchy UI fade-in
+            CanvasGroup cg = GetComponent<CanvasGroup>();
+            if (cg == null) cg = gameObject.AddComponent<CanvasGroup>();
+            
+            cg.alpha = 0f;
+            float elapsed = 0f;
+            while (elapsed < 0.5f)
+            {
+                elapsed += Time.deltaTime;
+                cg.alpha = Mathf.Lerp(0f, 1f, elapsed / 0.5f);
+                yield return null;
+            }
+
+            // Set Initial Objective
+            if (_objectiveTitleText != null) _objectiveTitleText.text = "► NEW DIRECTIVE";
+            if (_objectiveDescriptionText != null) _objectiveDescriptionText.text = "FIND THE FOUR";
+
+            if (_objectivePanel != null)
+            {
+                _objectivePanel.SetActive(true);
+                // Pulse effect
+                Vector3 originalScale = _objectivePanel.transform.localScale;
+                _objectivePanel.transform.localScale = originalScale * 1.2f;
+                yield return new WaitForSeconds(0.1f);
+                _objectivePanel.transform.localScale = originalScale;
+            }
         }
 
         // ─── Lifecycle & Subscriptions ────────────────────────────────────────────────────────
