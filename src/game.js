@@ -15,22 +15,10 @@ import { eventBus, EVENTS } from './core/EventBus.js';
 const renderer = new PrototypeRenderer('scar-canvas');
 gameManager.registerRenderer(renderer);
 
-// ─── Stubs — Kaustub and Priyanshu register their modules here ───────────────
-// These will be replaced when teammates merge their branches.
+import { kaustubEngine } from './gameplay/KaustubGameplayEngine.js';
 
-const engineStub = {
-  async init() {
-    console.log('[Engine Stub] Kaustub engine not yet merged. Using minimal stub.');
-  },
-  update(state, dt) {
-    // No-op until Kaustub merges
-  },
-  setScene(sceneName) {
-    console.log(`[Engine Stub] Scene: ${sceneName}`);
-  },
-  reset() {},
-};
-gameManager.registerEngine(engineStub);
+// Register Kaustub's Gameplay Engine
+gameManager.registerEngine(kaustubEngine);
 
 const backendStub = {
   async authenticate() {
@@ -65,15 +53,21 @@ async function boot() {
     console.warn('[Boot] Auth failed, starting as guest:', err);
   }
 
-  // Show start screen overlay
-  document.getElementById('start-screen').classList.remove('hidden');
+  // Show start screen overlay in browser
+  if (typeof document !== 'undefined') {
+    const startScreen = document.getElementById('start-screen');
+    if (startScreen) startScreen.classList.remove('hidden');
 
-  document.getElementById('btn-start').addEventListener('click', async () => {
-    const nameInput = document.getElementById('player-name');
-    const name = nameInput?.value?.trim() || 'Player';
-    document.getElementById('start-screen').classList.add('hidden');
-    await gameManager.startGame(playerId, name);
-  });
+    const btnStart = document.getElementById('btn-start');
+    if (btnStart) {
+      btnStart.addEventListener('click', async () => {
+        const nameInput = document.getElementById('player-name');
+        const name = nameInput?.value?.trim() || 'Player';
+        if (startScreen) startScreen.classList.add('hidden');
+        await gameManager.startGame(playerId, name);
+      });
+    }
+  }
 }
 
 // ─── Global events for debugging ─────────────────────────────────────────────

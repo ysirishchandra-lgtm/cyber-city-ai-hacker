@@ -1,0 +1,307 @@
+/* SCAR — THE LAST CHOICE: Cyberpunk Styling */
+:root {
+  --bg-dark: #0a0a12;
+  --panel-bg: rgba(16, 16, 28, 0.85);
+  --cyan-glow: #00f3ff;
+  --magenta-glow: #ff0055;
+  --green-glow: #00ff66;
+  --gold-glow: #ffb700;
+  --text-main: #e0f7fc;
+  --font-title: 'Orbitron', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-body: 'Rajdhani', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: var(--font-body);
+}
+
+#gameCanvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* CRT Scanlines Overlay */
+.scanlines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
+  z-index: 5;
+}
+
+/* UI Overlay & Header */
+.ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.cyber-header {
+  pointer-events: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 30px;
+  background: rgba(10, 10, 18, 0.7);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(0, 243, 255, 0.3);
+}
+
+.logo {
+  font-family: var(--font-title);
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px var(--cyan-glow);
+}
+
+.logo .sub {
+  font-size: 11px;
+  color: var(--cyan-glow);
+  display: block;
+}
+
+.path-badge {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: 6px 16px;
+  background: rgba(0, 243, 255, 0.1);
+  border: 1px solid var(--cyan-glow);
+  color: var(--cyan-glow);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+  text-transform: uppercase;
+}
+
+.metrics-bar {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  display: flex;
+  gap: 20px;
+}
+
+/* Modal Cards */
+.modal-card {
+  pointer-events: auto;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 650px;
+  padding: 35px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--cyan-glow);
+  box-shadow: 0 0 30px rgba(0, 243, 255, 0.25);
+  text-align: center;
+
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modal-card.hidden {
+  display: none !important;
+}
+
+.title {
+  font-family: var(--font-title);
+  font-size: 28px;
+  color: #fff;
+  letter-spacing: 2px;
+  text-shadow: 0 0 12px var(--cyan-glow);
+}
+
+.title.danger {
+  color: var(--magenta-glow);
+  text-shadow: 0 0 12px var(--magenta-glow);
+}
+
+.title.success {
+  color: var(--green-glow);
+  text-shadow: 0 0 12px var(--green-glow);
+}
+
+.subtitle {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--cyan-glow);
+}
+
+.story-box {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 15px;
+  border-left: 3px solid var(--cyan-glow);
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.story-box ul {
+  margin-top: 10px;
+  list-style: none;
+}
+
+.path-tag {
+  font-family: var(--font-mono);
+  font-weight: bold;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+.path-tag.aggressive { color: var(--magenta-glow); }
+.path-tag.protective { color: var(--cyan-glow); }
+.path-tag.strategic { color: var(--green-glow); }
+
+.controls-guide {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #a0c0d0;
+}
+
+.cyber-button {
+  font-family: var(--font-title);
+  font-size: 14px;
+  padding: 12px 30px;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 1.5px;
+  transition: all 0.2s ease;
+}
+
+.cyber-button.primary {
+  background: var(--cyan-glow);
+  color: #000;
+  box-shadow: 0 0 15px var(--cyan-glow);
+}
+
+.cyber-button.secondary {
+  background: var(--magenta-glow);
+  color: #fff;
+  box-shadow: 0 0 15px var(--magenta-glow);
+}
+
+.cyber-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 25px currentColor;
+}
+
+/* Banner Overlay */
+.banner-overlay {
+  position: absolute;
+  top: 25%;
+  left: 0;
+  width: 100%;
+  padding: 20px;
+  background: rgba(255, 0, 85, 0.85);
+  backdrop-filter: blur(8px);
+  text-align: center;
+  border-top: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  animation: pulseBanner 0.5s infinite alternate;
+}
+
+.banner-overlay.hidden {
+  display: none !important;
+}
+
+.banner-title {
+  font-family: var(--font-title);
+  font-size: 24px;
+  color: #fff;
+  letter-spacing: 3px;
+}
+
+.banner-sub {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: #ffeedd;
+  margin-top: 5px;
+}
+
+@keyframes pulseBanner {
+  from { opacity: 0.85; }
+  to { opacity: 1.0; }
+}
+
+/* Final Choice Grid */
+.choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.choice-btn {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #444;
+  padding: 18px;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.choice-btn h3 {
+  font-family: var(--font-title);
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.choice-btn p {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.choice-btn.villain:hover { border-color: var(--magenta-glow); background: rgba(255, 0, 85, 0.2); }
+.choice-btn.hero:hover { border-color: var(--cyan-glow); background: rgba(0, 243, 255, 0.2); }
+.choice-btn.savior:hover { border-color: var(--green-glow); background: rgba(0, 255, 102, 0.2); }
+.choice-btn.human:hover { border-color: var(--gold-glow); background: rgba(255, 183, 0, 0.2); }
+
+/* Metrics Summary Grid */
+.metrics-summary {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 15px;
+  border: 1px dashed var(--cyan-glow);
+  font-family: var(--font-mono);
+}
+
+.grid-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 14px;
+  text-align: left;
+}
