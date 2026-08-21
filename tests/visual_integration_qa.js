@@ -43,6 +43,8 @@ function createMockCanvas(w = 1280, h = 720) {
     lineTo: (x, y) => calls.push(`lineTo(${x},${y})`),
     arc: (x, y, r) => calls.push(`arc(${x},${y},${r})`),
     ellipse: (x, y, rx, ry) => calls.push(`ellipse(${x},${y},${rx},${ry})`),
+    quadraticCurveTo: (cpx, cpy, x, y) => calls.push(`quadraticCurveTo(${cpx},${cpy},${x},${y})`),
+    roundRect: (x, y, w, h, r) => calls.push(`roundRect(${x},${y},${w},${h})`),
     arcTo: () => {},
     fill: () => calls.push('fill'),
     stroke: () => calls.push('stroke'),

@@ -127,16 +127,21 @@ export class PrototypeRenderer {
     cyberHUD.update(dt, state);
     dialogueAndChoiceUI.update(dt);
 
-    // Synchronize camera with gameplay if available
+    // Synchronize 3rd-person action camera with gameplay
     const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : (typeof globalThis !== 'undefined' ? globalThis.__SCAR_GAMEPLAY_STATE__ : null);
-    if (gameplayState && gameplayState.camera) {
-      this.camera.x += (gameplayState.camera.x - this.camera.x) * 0.15;
-      this.camera.y += (gameplayState.camera.y - this.camera.y) * 0.15;
-    } else if (gameplayState && gameplayState.player) {
-      const targetCamX = gameplayState.player.x - w / 2;
-      const targetCamY = gameplayState.player.y - h / 2;
-      this.camera.x += (targetCamX - this.camera.x) * 0.15;
-      this.camera.y += (targetCamY - this.camera.y) * 0.15;
+    if (gameplayState && gameplayState.player) {
+      const facingAngle = gameplayState.player.facingAngle || 0;
+      // 3rd-person action lead-ahead offset
+      const leadX = Math.cos(facingAngle) * 75;
+      const leadY = Math.sin(facingAngle) * 75;
+
+      const targetCamX = gameplayState.player.x - w / 2 + leadX;
+      const targetCamY = gameplayState.player.y - h / 2 + leadY;
+      this.camera.x += (targetCamX - this.camera.x) * 0.12;
+      this.camera.y += (targetCamY - this.camera.y) * 0.12;
+    } else if (gameplayState && gameplayState.camera) {
+      this.camera.x += (gameplayState.camera.x - this.camera.x) * 0.12;
+      this.camera.y += (gameplayState.camera.y - this.camera.y) * 0.12;
     }
 
     // 2. Pre-pass (Screen Shake / Rotation)
