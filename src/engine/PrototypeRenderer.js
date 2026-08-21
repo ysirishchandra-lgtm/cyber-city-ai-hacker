@@ -236,15 +236,87 @@ export class PrototypeRenderer {
       if (this._currentDialogue) {
         dialogueAndChoiceUI.renderDialogue(ctx, this._currentDialogue, this._dialogueLine, w, h);
       }
+
+      // F. Render Pause Menu Overlay
+      if (this.isPaused) {
+        this._renderPauseMenu(ctx, w, h);
+      }
     }
 
     // 5. Post-Pass (CRT Scanlines, Vignette, Glitch Artifacts & Letterbox)
     shaderPipeline.applyPostPass(ctx, w, h);
   }
 
+  _renderPauseMenu(ctx, w, h) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(2, 4, 10, 0.88)';
+    ctx.fillRect(0, 0, w, h);
+
+    const boxW = Math.min(560, w * 0.9);
+    const boxH = 360;
+    const bx = (w - boxW) / 2;
+    const by = (h - boxH) / 2;
+
+    ctx.fillStyle = 'rgba(10, 14, 24, 0.95)';
+    ctx.strokeStyle = '#00f3ff';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#00f3ff';
+    ctx.shadowBlur = 16;
+    ctx.strokeRect(bx, by, boxW, boxH);
+    ctx.fillRect(bx, by, boxW, boxH);
+
+    ctx.fillStyle = '#00f3ff';
+    ctx.font = 'bold 26px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('SYSTEM PAUSED', w / 2, by + 45);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '13px monospace';
+    ctx.fillText('CONTROLS & TACTICAL PROTOCOLS', w / 2, by + 85);
+
+    const controls = [
+      'WASD / ARROWS : 3D Movement & Directional Stride',
+      'MOUSE LOOK   : Over-the-Shoulder Camera Lead',
+      'LEFT CLICK   : 3-Hit Katana Combo Ribbon Attack',
+      'SPACE / SHIFT: 360° Dodge Roll (Invulnerability)',
+      'Q / R CLICK  : Activate Awakened Power (Nova/Barrier/Stasis)',
+      'E KEY        : Investigate Clues & Comms Intercept',
+      'SPACE / CLICK: Advance Dialogue & Skip Cutscenes',
+    ];
+
+    ctx.font = '11px monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.textAlign = 'left';
+    controls.forEach((ctrl, i) => {
+      ctx.fillText(`• ${ctrl}`, bx + 35, by + 120 + i * 22);
+    });
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ff0055';
+    ctx.font = 'bold 13px monospace';
+    ctx.fillText('[ESC] RESUME  |  [T] QUIT TO TITLE', w / 2, by + boxH - 25);
+
+    ctx.restore();
+  }
+
   // ─── Input Handling ────────────────────────────────────────────────────────
 
   _handleKey(e) {
+    // 0. Toggle Pause
+    if (e.code === 'Escape') {
+      if (!cinematicsEngine.active && !this._showEndingScreen) {
+        this.isPaused = !this.isPaused;
+        return;
+      }
+    }
+
+    if (this.isPaused) {
+      if (e.code === 'KeyT') {
+        location.reload();
+      }
+      return;
+    }
+
     // 1. Cinematic skip
     if (cinematicsEngine.active) {
       if (e.code === 'Space' || e.code === 'Enter') {
