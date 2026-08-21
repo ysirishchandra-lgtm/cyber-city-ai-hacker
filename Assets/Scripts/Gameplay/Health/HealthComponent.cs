@@ -1,10 +1,11 @@
 using System;
 using UnityEngine;
+using Scar.Core;
 using Scar.Gameplay.Combat;
 
 namespace Scar.Gameplay.Health
 {
-    public class HealthComponent : MonoBehaviour
+    public class HealthComponent : MonoBehaviour, IDamageable
     {
         [Header("Health Settings")]
         [SerializeField] private float maxHealth = 100f;
@@ -32,18 +33,25 @@ namespace Scar.Gameplay.Health
             OnHealthChanged?.Invoke(CurrentHealth, maxHealth);
         }
 
-        public void TakeDamage(DamageData damageData)
+        public void TakeDamage(float amount, string damageSource = "Unknown")
         {
-            if (_isDead || damageData == null || damageData.amount <= 0f) return;
+            if (_isDead || amount <= 0f) return;
 
-            CurrentHealth = Mathf.Max(0f, CurrentHealth - damageData.amount);
-            OnDamage?.Invoke(damageData);
+            CurrentHealth = Mathf.Max(0f, CurrentHealth - amount);
+            var data = new DamageData(amount, DamageType.MELEE, null);
+            OnDamage?.Invoke(data);
             OnHealthChanged?.Invoke(CurrentHealth, maxHealth);
 
             if (CurrentHealth <= 0f && !_isDead)
             {
                 Die();
             }
+        }
+
+        public void TakeDamage(DamageData damageData)
+        {
+            if (damageData == null) return;
+            TakeDamage(damageData.amount, damageData.type.ToString());
         }
 
         public void Heal(float amount)
