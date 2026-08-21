@@ -50,9 +50,16 @@ export class KaustubGameplayEngine {
     window.addEventListener('keydown', (e) => {
       this.keys[e.key] = true;
 
+      if ((e.key === 'e' || e.key === 'E') && gameState.isPlaying()) {
+        KaustubAPI.npcInteracted('INFORMANT_KIRA');
+        eventBus.emit(EVENTS.CHOICE_PRESENTED, { target: 'INTERACTABLE_CLUE' });
+      }
+
       if (e.key === ' ' && gameState.isPlaying()) {
         if (gameState.hasPower()) {
           this.powerSystem.activate(this.player, this.enemies, this.particleEffects);
+        } else {
+          this.player.sprintDodgeTimer = 0.3;
         }
       }
     });
@@ -67,9 +74,22 @@ export class KaustubGameplayEngine {
     });
 
     window.addEventListener('mousedown', (e) => {
-      if (e.button === 0 && gameState.isPlaying()) {
+      if (!gameState.isPlaying()) return;
+
+      if (e.button === 0) {
+        // Left Click = Attack
         this.player.attack(this.enemies, this.particleEffects);
+      } else if (e.button === 2) {
+        // Right Click = Power activation after awakening
+        if (gameState.hasPower()) {
+          this.powerSystem.activate(this.player, this.enemies, this.particleEffects);
+        }
       }
+    });
+
+    window.addEventListener('contextmenu', (e) => {
+      // Prevent default context menu on right click during gameplay
+      if (gameState.isPlaying()) e.preventDefault();
     });
   }
 
