@@ -20,45 +20,53 @@ namespace Scar.Editor
 
             // Left Wall
             GameObject wallL = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            wallL.name = "Wall_Left (WallRun)";
+            wallL.name = "Wall_Left (Cyberpunk Backdrop)";
             wallL.transform.SetParent(levelRoot.transform);
-            wallL.transform.position = new Vector3(-25f, 10f, 0f);
-            wallL.transform.localScale = new Vector3(2f, 20f, 100f);
+            wallL.transform.position = new Vector3(-25f, 20f, 0f);
+            wallL.transform.localScale = new Vector3(2f, 40f, 100f);
             
             // Right Wall
             GameObject wallR = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            wallR.name = "Wall_Right";
+            wallR.name = "Wall_Right (Cyberpunk Backdrop)";
             wallR.transform.SetParent(levelRoot.transform);
-            wallR.transform.position = new Vector3(25f, 10f, 0f);
-            wallR.transform.localScale = new Vector3(2f, 20f, 100f);
+            wallR.transform.position = new Vector3(25f, 20f, 0f);
+            wallR.transform.localScale = new Vector3(2f, 40f, 100f);
 
-            // 2. Multi-tier platforms
+            // 2. Destructible Street Barriers & Neon Billboards
+            for (int i = 0; i < 6; i++)
+            {
+                GameObject billboard = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                billboard.name = $"Neon_Billboard_{i}";
+                billboard.transform.SetParent(wallR.transform);
+                billboard.transform.localPosition = new Vector3(-0.6f, Random.Range(-0.3f, 0.4f), Random.Range(-0.4f, 0.4f));
+                billboard.transform.localScale = new Vector3(1.5f, 0.1f, 0.1f); // Sticking out
+            }
+
             for (int i = 0; i < 4; i++)
             {
                 GameObject platform = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                platform.name = $"Platform_Tier_{i+1}";
+                platform.name = $"Destructible_Barrier_{i+1}";
                 platform.transform.SetParent(levelRoot.transform);
-                platform.transform.position = new Vector3(Random.Range(-15f, 15f), 5f + (i * 4f), Random.Range(-30f, 30f));
-                platform.transform.localScale = new Vector3(10f, 1f, 10f);
-                
-                // Add jump-up ledges tagging if needed
-                platform.tag = "TraversableLedge";
+                platform.transform.position = new Vector3(Random.Range(-15f, 15f), 1f, Random.Range(-30f, 30f));
+                platform.transform.localScale = new Vector3(3f, 2f, 1f);
+                platform.tag = "Destructible";
             }
 
-            // 3. Environment Lighting & Atmosphere
-            GameObject lightObj = new GameObject("Neon_KeyLight");
+            // 3. Environment Lighting & Stormy Skybox Approximation
+            GameObject lightObj = new GameObject("Sunset_Stormy_KeyLight");
             lightObj.transform.SetParent(levelRoot.transform);
-            lightObj.transform.position = new Vector3(0f, 20f, 0f);
+            lightObj.transform.position = new Vector3(0f, 50f, 0f);
+            lightObj.transform.rotation = Quaternion.Euler(30f, -45f, 0f);
             Light light = lightObj.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.color = new Color(0f, 0.8f, 1f); // Cyber Cyan
-            light.intensity = 1.2f;
+            light.color = new Color(1f, 0.4f, 0.1f); // Stormy Sunset Orange
+            light.intensity = 0.8f;
 
             // Fog Volume approximation
             RenderSettings.fog = true;
-            RenderSettings.fogColor = new Color(0.05f, 0.05f, 0.1f);
+            RenderSettings.fogColor = new Color(0.05f, 0.05f, 0.08f);
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = 0.02f;
+            RenderSettings.fogDensity = 0.03f;
 
             Debug.Log("[SCAR Editor] Level 1 Geometry, Collisions, and Atmospheric Lighting successfully generated!");
         }
