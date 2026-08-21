@@ -1,200 +1,255 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SCAR — THE LAST CHOICE</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SCAR — The Last Choice</title>
+  <meta name="description" content="A narrative choice-driven game. Everyone has a superpower. You have zero. Until now." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: 'Courier New', monospace;
+    }
+
+    #scar-canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* ─── Start Screen ─── */
+    #start-screen {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    #start-screen.hidden { display: none; }
+
+    .scar-logo {
+      font-size: clamp(52px, 10vw, 96px);
+      font-weight: bold;
+      color: #fff;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .scar-tagline {
+      font-size: clamp(14px, 2.2vw, 20px);
+      color: #555;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-top: 8px;
+    }
+
+    .scar-hook {
+      font-size: clamp(13px, 1.8vw, 17px);
+      color: #888;
+      margin-top: 28px;
+      font-style: italic;
+      text-align: center;
+      max-width: 480px;
+      line-height: 1.7;
+    }
+
+    .scar-divider {
+      width: 120px;
+      height: 2px;
+      background: #cc0000;
+      margin: 32px 0;
+    }
+
+    .name-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    #player-name {
+      background: #111;
+      border: 1px solid #333;
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      font-size: 16px;
+      padding: 10px 16px;
+      width: 220px;
+      outline: none;
+      border-radius: 4px;
+    }
+
+    #player-name:focus {
+      border-color: #cc0000;
+    }
+
+    #btn-start {
+      background: #cc0000;
+      color: #fff;
+      border: none;
+      font-family: 'Courier New', monospace;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 10px 28px;
+      cursor: pointer;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+
+    #btn-start:hover { background: #ff2222; }
+
+    .scar-note {
+      font-size: 12px;
+      color: #333;
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    /* ─── Leaderboard overlay (Priyanshu fills this) ─── */
+    #leaderboard-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 40px 20px;
+      z-index: 200;
+      overflow-y: auto;
+    }
+
+    #leaderboard-overlay.visible { display: flex; }
+
+    #leaderboard-overlay h2 {
+      color: #fff;
+      font-size: 28px;
+      letter-spacing: 0.15em;
+      margin-bottom: 12px;
+    }
+
+    #leaderboard-overlay p {
+      color: #555;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+
+    #leaderboard-list {
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .lb-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      border-bottom: 1px solid #1a1a1a;
+      color: #ccc;
+      font-size: 15px;
+    }
+
+    .lb-row:first-child { border-top: 1px solid #1a1a1a; }
+    .lb-rank { color: #555; width: 32px; }
+    .lb-name { flex: 1; padding: 0 12px; }
+    .lb-ending { font-size: 12px; color: #666; }
+    .lb-score { color: #fff; font-weight: bold; }
+
+    .lb-empty {
+      color: #333;
+      text-align: center;
+      padding: 40px;
+      font-size: 15px;
+    }
+
+    #btn-close-lb {
+      margin-top: 32px;
+      background: transparent;
+      border: 1px solid #333;
+      color: #666;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      padding: 8px 24px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    #btn-close-lb:hover { border-color: #cc0000; color: #cc0000; }
+  </style>
 </head>
 <body>
 
-  <!-- Game Canvas Viewport -->
-  <canvas id="gameCanvas"></canvas>
+  <!-- Game Canvas — Kaustub and Ashwidha render here -->
+  <canvas id="scar-canvas"></canvas>
 
-  <!-- CRT Scanlines Effect Overlay -->
-  <div class="scanlines"></div>
-
-  <!-- UI Overlay Panels -->
-  <div id="uiOverlay" class="ui-overlay">
-    
-    <!-- Header Controls & HUD -->
-    <header class="cyber-header">
-      <div class="logo">SCAR <span class="sub">THE LAST CHOICE</span></div>
-      <div id="pathDisplay" class="path-badge">PATH: DORMANT</div>
-      <div id="metricsBar" class="metrics-bar">
-        <span>ENEMIES: <strong id="valEnemies">0</strong></span>
-        <span>HEALTH: <strong id="valHealth">100</strong>/100</span>
-      </div>
-    </header>
-
-    <!-- Start Screen Modal -->
-    <div id="startScreen" class="modal-card">
-      <h1 class="title">SCAR — THE LAST CHOICE</h1>
-      <p class="subtitle">KAUSTUB — GAMEPLAY / POWERS / HERO AI</p>
-      
-      <div class="story-box">
-        <p>In a city where everyone is born with supernatural abilities... <strong>You have ZERO powers</strong>.</p>
-        <p>Survive the streets of Level 1. How you fight and react will awaken your true path:</p>
-        <ul>
-          <li><span class="path-tag aggressive">AGGRESSIVE</span> → Awakens <strong>DESTRUCTION NOVA</strong></li>
-          <li><span class="path-tag protective">PROTECTIVE</span> → Awakens <strong>KINETIC BARRIER</strong></li>
-          <li><span class="path-tag strategic">STRATEGIC</span> → Awakens <strong>STASIS HACK</strong></li>
-        </ul>
-      </div>
-
-      <div class="controls-guide">
-        <span><strong>WASD / ARROWS</strong> : Move</span>
-        <span><strong>SHIFT</strong> : Sprint</span>
-        <span><strong>LEFT CLICK</strong> : Melee Attack</span>
-        <span><strong>SPACEBAR</strong> : Activate Power</span>
-      </div>
-
-      <button id="btnStart" class="cyber-button primary">START MISSION</button>
+  <!-- Start Screen -->
+  <div id="start-screen">
+    <div class="scar-logo">SCAR</div>
+    <div class="scar-tagline">The Last Choice</div>
+    <p class="scar-hook">
+      Everyone has a superpower.<br/>
+      You have zero.<br/>
+      Until tonight changes everything.
+    </p>
+    <div class="scar-divider"></div>
+    <div class="name-row">
+      <input
+        id="player-name"
+        type="text"
+        placeholder="Enter your name"
+        maxlength="24"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button id="btn-start">Begin</button>
     </div>
-
-    <!-- Scar Event Banner -->
-    <div id="scarBanner" class="banner-overlay hidden">
-      <h2 class="banner-title">CRITICAL IMPACT — THE SCAR RECEIVED</h2>
-      <p id="awakeningText" class="banner-sub">Your power awakens...</p>
-    </div>
-
-    <!-- Final Choice Modal -->
-    <div id="finalChoiceModal" class="modal-card hidden">
-      <h2 class="title">THE FINAL CONFRONTATION</h2>
-      <p class="subtitle">The Hero has fallen. The fate of the Cyber Grid rests in your hands.</p>
-      
-      <div class="choice-grid">
-        <button class="choice-btn villain" data-choice="VILLAIN">
-          <h3>BECOME THE VILLAIN</h3>
-          <p>Conquer the system with raw force and rule the city.</p>
-        </button>
-        <button class="choice-btn hero" data-choice="HERO">
-          <h3>BECOME THE HERO</h3>
-          <p>Take the fallen hero's mantle and protect the weak.</p>
-        </button>
-        <button class="choice-btn savior" data-choice="SAVIOR">
-          <h3>BECOME THE SAVIOR</h3>
-          <p>Synthesize all power paths and erase the Scar system.</p>
-        </button>
-        <button class="choice-btn human" data-choice="HUMAN">
-          <h3>BECOME HUMAN</h3>
-          <p>Renounce all awakened powers and walk away.</p>
-        </button>
-      </div>
-    </div>
-
-    <!-- Game Over Screen -->
-    <div id="gameOverScreen" class="modal-card hidden">
-      <h1 class="title danger">SIGNAL LOST — GAME OVER</h1>
-      <p>Your journey ended in the cyber grid.</p>
-      <button id="btnRestartGameOver" class="cyber-button secondary">RETRY MISSION</button>
-    </div>
-
-    <!-- Ending Screen & Metrics Summary -->
-    <div id="endingScreen" class="modal-card hidden">
-      <h1 class="title success">MISSION COMPLETE</h1>
-      <h2 id="finalChoiceTitle" class="subtitle">YOU BECAME THE HERO</h2>
-      
-      <div class="metrics-summary">
-        <h3>REAL GAMEPLAY METRICS</h3>
-        <div class="grid-stats">
-          <div>Time Elapsed: <strong id="statTime">0s</strong></div>
-          <div>Enemies Defeated: <strong id="statEnemies">0</strong></div>
-          <div>Power Usage Count: <strong id="statPowers">0</strong></div>
-          <div>Damage Received: <strong id="statDamage">0</strong></div>
-          <div>Dominant Path: <strong id="statPath">NONE</strong></div>
-          <div>Hero Outcome: <strong id="statHero">SPARED</strong></div>
-        </div>
-      </div>
-
-      <button id="btnRestartEnding" class="cyber-button primary">PLAY AGAIN</button>
-    </div>
-
+    <p class="scar-note">
+      Your choices define your power. Your power defines your ending.<br/>
+      No fake scores. No fake players. Real choices only.
+    </p>
   </div>
 
+  <!-- Leaderboard Overlay — Priyanshu populates this -->
+  <div id="leaderboard-overlay">
+    <h2>LEADERBOARD</h2>
+    <p>Real scores from real players</p>
+    <div id="leaderboard-list">
+      <div class="lb-empty">No players yet.</div>
+    </div>
+    <button id="btn-close-lb">Close</button>
+  </div>
+
+  <!-- Game Script -->
+  <script type="module" src="src/game.js"></script>
+
+  <!-- Leaderboard toggle -->
   <script type="module">
-    import { GameEngine, GAME_STATES } from './src/game.js';
-    import { eventBus, GAME_EVENTS } from './src/events.js';
-    import { metrics } from './src/metrics.js';
+    import { eventBus } from './src/core/EventBus.js';
 
-    window.addEventListener('DOMContentLoaded', () => {
-      const canvas = document.getElementById('gameCanvas');
-      const engine = new GameEngine(canvas);
-      requestAnimationFrame((t) => engine.loop(t));
+    const overlay = document.getElementById('leaderboard-overlay');
+    const closeBtn = document.getElementById('btn-close-lb');
 
-      const startScreen = document.getElementById('startScreen');
-      const scarBanner = document.getElementById('scarBanner');
-      const awakeningText = document.getElementById('awakeningText');
-      const finalChoiceModal = document.getElementById('finalChoiceModal');
-      const gameOverScreen = document.getElementById('gameOverScreen');
-      const endingScreen = document.getElementById('endingScreen');
-      const pathDisplay = document.getElementById('pathDisplay');
+    eventBus.on('SHOW_LEADERBOARD', async () => {
+      overlay.classList.add('visible');
+      const list = document.getElementById('leaderboard-list');
 
-      document.getElementById('btnStart').addEventListener('click', () => {
-        startScreen.classList.add('hidden');
-        engine.startGame();
-      });
+      // Priyanshu: replace this with your real leaderboard fetch
+      list.innerHTML = '<div class="lb-empty">No players yet.</div>';
+    });
 
-      document.getElementById('btnRestartGameOver').addEventListener('click', () => {
-        gameOverScreen.classList.add('hidden');
-        engine.startGame();
-      });
-
-      document.getElementById('btnRestartEnding').addEventListener('click', () => {
-        endingScreen.classList.add('hidden');
-        engine.startGame();
-      });
-
-      // Choice buttons hookup
-      document.querySelectorAll('.choice-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const choice = e.currentTarget.getAttribute('data-choice');
-          finalChoiceModal.classList.add('hidden');
-          engine.makeFinalChoice(choice);
-        });
-      });
-
-      // Event Listeners for UI state syncing
-      eventBus.on(GAME_EVENTS.POWER_AWAKENED, (payload) => {
-        pathDisplay.innerText = `PATH: ${payload.data.path}`;
-        awakeningText.innerText = `AWAKENED: ${payload.data.name} — ${payload.data.description}`;
-        scarBanner.classList.remove('hidden');
-        setTimeout(() => scarBanner.classList.add('hidden'), 3500);
-      });
-
-      eventBus.on(GAME_EVENTS.POWER_PATH_CHANGED, (payload) => {
-        pathDisplay.innerText = `PATH: ${payload.data.path}`;
-      });
-
-      eventBus.on(GAME_EVENTS.ENDING_TRIGGERED, () => {
-        finalChoiceModal.classList.remove('hidden');
-      });
-
-      eventBus.on(GAME_EVENTS.GAME_OVER, () => {
-        gameOverScreen.classList.remove('hidden');
-      });
-
-      eventBus.on(GAME_EVENTS.FINAL_CHOICE_MADE, (payload) => {
-        const summary = metrics.getSummary();
-        document.getElementById('finalChoiceTitle').innerText = `YOU BECAME THE ${payload.data.choice}`;
-        document.getElementById('statTime').innerText = `${summary.time}s`;
-        document.getElementById('statEnemies').innerText = summary.enemiesDefeated;
-        document.getElementById('statPowers').innerText = summary.powerUsage;
-        document.getElementById('statDamage').innerText = summary.damageReceived;
-        document.getElementById('statPath').innerText = summary.dominantPath;
-        document.getElementById('statHero').innerText = summary.heroResult;
-        endingScreen.classList.remove('hidden');
-      });
-
-      // Update real-time HUD stats
-      setInterval(() => {
-        document.getElementById('valEnemies').innerText = metrics.enemiesDefeated;
-        document.getElementById('valHealth').innerText = Math.round(engine.player.health);
-      }, 200);
+    closeBtn.addEventListener('click', () => {
+      overlay.classList.remove('visible');
     });
   </script>
+
 </body>
 </html>
