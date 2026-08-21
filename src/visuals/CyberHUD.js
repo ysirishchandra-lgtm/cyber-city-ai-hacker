@@ -66,10 +66,11 @@ export class CyberHUD {
     const ghostPct = Math.max(0, Math.min(1, this._ghostHealth / maxHp));
 
     // Outer Tactical Frame
+    const cardHeight = state.scarReceived ? 86 : 68;
     ctx.fillStyle = 'rgba(10, 12, 22, 0.85)';
-    ctx.strokeStyle = 'rgba(0, 243, 255, 0.4)';
+    ctx.strokeStyle = state.scarReceived ? 'rgba(255, 68, 0, 0.6)' : 'rgba(0, 243, 255, 0.4)';
     ctx.lineWidth = 1.5;
-    this._roundRect(ctx, x, y, 240, 68, 6, true, true);
+    this._roundRect(ctx, x, y, 240, cardHeight, 6, true, true);
 
     // Player ID & Level
     ctx.fillStyle = '#ffffff';
@@ -101,6 +102,16 @@ export class CyberHUD {
     ctx.shadowColor = hpColor;
     ctx.shadowBlur = 8;
     ctx.fillRect(barX, barY, barW * hpPct, barH);
+
+    // 72-Hour Survival Deadline Countdown (Visible after Scar)
+    if (state.scarReceived) {
+      const hours = typeof state.hoursRemaining === 'number' ? state.hoursRemaining : 72;
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = '#ff3300';
+      ctx.fillStyle = '#ff4400';
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText(`⏳ DEADLINE: ${hours.toFixed(1)}h REMAINING`, x + 14, y + 74);
+    }
 
     ctx.restore();
   }

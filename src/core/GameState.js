@@ -95,6 +95,11 @@ const createInitialState = () => ({
   gameEndTime: null,
   levelStartTimes: {},
 
+  // 72-Hour Survival Deadline
+  scarReceived: false,
+  deadlineHours: 72,
+  deadlineStartTime: null,
+
   // Score
   score: 0,
 
@@ -113,7 +118,16 @@ class GameState {
   // ── Reads ────────────────────────────────────────────────────────────────
 
   get() {
-    return { ...this._state };
+    return { 
+      ...this._state,
+      hoursRemaining: this.getDeadlineHoursRemaining()
+    };
+  }
+
+  getDeadlineHoursRemaining() {
+    if (!this._state.scarReceived || !this._state.deadlineStartTime) return 72;
+    const elapsedMinutes = (Date.now() - this._state.deadlineStartTime) / (1000 * 60);
+    return Math.max(0, parseFloat((72 - (elapsedMinutes * 0.2)).toFixed(1)));
   }
 
   getField(key) {
@@ -216,9 +230,15 @@ class GameState {
   }
 
   receiveScar() {
-    // Scar permanently marks the player — health cap reduced by 20
-    this._update({ maxHealth: 80, health: Math.min(this._state.health, 80) });
-    eventBus.emit(EVENTS.SCAR_RECEIVED, { timestamp: Date.now() });
+    // Scar permanently marks the player — health cap reduced by 20, 72-hour survival timer starts
+    this._update({ 
+      maxHealth: 80, 
+      health: Math.min(this._state.health, 80),
+      scarReceived: true,
+      deadlineHours: 72,
+      deadlineStartTime: Date.now()
+    });
+    eventBus.emit(EVENTS.SCAR_RECEIVED, { timestamp: Date.now(), deadlineHours: 72 });
   }
 
   awakePower(path) {
