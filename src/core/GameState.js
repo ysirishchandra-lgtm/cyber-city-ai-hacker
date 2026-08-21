@@ -342,7 +342,7 @@ class GameState {
 
   reset() {
     this._state = createInitialState();
-    eventBus.clear();
+    this._snapshots = [];
   }
 
   /**

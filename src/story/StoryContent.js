@@ -8,7 +8,17 @@
  */
 
 import { POWER_PATH, HERO_RELATIONSHIP, ENDING } from '../core/GameState.js';
-import { OBJECTIVE_TYPE } from '../core/ChoiceSystem.js';
+
+// ─── Objective Type Enum ──────────────────────────────────────────────────────
+export const OBJECTIVE_TYPE = {
+  REACH_AREA: 'REACH_AREA',
+  DEFEAT_ENEMIES: 'DEFEAT_ENEMIES',
+  SURVIVE_TIME: 'SURVIVE_TIME',
+  INTERACT: 'INTERACT',
+  PROTECT: 'PROTECT',
+  ESCAPE: 'ESCAPE',
+  TALK: 'TALK',
+};
 
 // ─── CINEMATIC PANELS ─────────────────────────────────────────────────────────
 // Ashwidha's system renders these. Each panel = one screen of story.

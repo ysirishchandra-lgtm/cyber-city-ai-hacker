@@ -62,7 +62,15 @@ export class PrototypeRenderer {
   }
 
   _showPanel(index) {
-    if (index >= this._cinematicPanels.length) {
+    if (!this._cinematicPanels || index >= this._cinematicPanels.length) {
+      // Clear cinematic state completely when finished
+      this._cinematicPanels = [];
+      this._cinematicIndex = 0;
+      this._cinematicPhase = null;
+      if (this._cinematicTimer) {
+        clearTimeout(this._cinematicTimer);
+        this._cinematicTimer = null;
+      }
       // All panels done — emit complete
       import('../core/EventBus.js').then(({ eventBus, EVENTS }) => {
         eventBus.emit(EVENTS.CINEMATIC_COMPLETE);
@@ -508,21 +516,25 @@ export class PrototypeRenderer {
   // ─── Key Handler ────────────────────────────────────────────────────────────
 
   _handleKey(e) {
-    // Skip cinematic panel
-    if (e.code === 'Space') {
-      if (this._cinematicPanels.length > 0) {
+    // 1. Skip cinematic panel if active
+    if (this._cinematicPanels && this._cinematicPanels.length > 0) {
+      if (e.code === 'Space') {
         if (this._cinematicTimer) clearTimeout(this._cinematicTimer);
         this._showPanel(this._cinematicIndex + 1);
         return;
       }
-      if (this._currentDialogue) {
+    }
+
+    // 2. Advance dialogue line if active
+    if (this._currentDialogue) {
+      if (e.code === 'Space') {
         this._dialogueLine++;
         this._drawDialogue();
         return;
       }
     }
 
-    // Choice selection
+    // 3. Choice selection
     if (this._currentChoice) {
       const idx = parseInt(e.key) - 1;
       if (idx >= 0 && idx < this._currentChoice.options.length) {
@@ -535,7 +547,7 @@ export class PrototypeRenderer {
       return;
     }
 
-    // Final choice
+    // 4. Final choice
     if (this._finalChoiceOptions) {
       const allEndings = [ENDING.VILLAIN, ENDING.HERO, ENDING.SAVIOR, ENDING.HUMAN];
       const idx = parseInt(e.key) - 1;
@@ -549,7 +561,7 @@ export class PrototypeRenderer {
       return;
     }
 
-    // Ending screen
+    // 5. Ending screen
     if (this._showEndingScreen) {
       if (e.code === 'KeyR') {
         location.reload();

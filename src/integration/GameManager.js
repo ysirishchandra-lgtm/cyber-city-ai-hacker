@@ -14,14 +14,31 @@ import { missionSystem } from '../core/MissionSystem.js';
 import { choiceSystem } from '../core/ChoiceSystem.js';
 import { scoreSystem } from '../core/ScoreSystem.js';
 import {
-  INTRO_PANELS, ATTACK_PANELS, SCAR_PANELS, DIALOGUES
+  INTRO_PANELS, ATTACK_PANELS, SCAR_PANELS, DIALOGUES, CHOICES
 } from '../story/StoryContent.js';
+
+// Cross-environment animation frame helpers
+const safeRequestAnimationFrame = (callback) => {
+  if (typeof requestAnimationFrame === 'function') {
+    return requestAnimationFrame(callback);
+  }
+  return setTimeout(() => callback(typeof performance !== 'undefined' ? performance.now() : Date.now()), 16);
+};
+
+const safeCancelAnimationFrame = (id) => {
+  if (typeof cancelAnimationFrame === 'function') {
+    cancelAnimationFrame(id);
+  } else {
+    clearTimeout(id);
+  }
+};
 
 class GameManager {
   constructor() {
     this._running = false;
     this._animationFrameId = null;
     this._lastTimestamp = 0;
+    this._cityFallbackTimer = null;
 
     // Team module references — registered by each developer
     this._renderer = null;   // Ashwidha registers this
@@ -64,6 +81,7 @@ class GameManager {
 
   _setupListeners() {
     eventBus.on(EVENTS.CINEMATIC_COMPLETE, () => this._onCinematicComplete());
+    eventBus.on(EVENTS.DIALOGUE_START, (data) => this._onDialogueStart(data));
     eventBus.on(EVENTS.DIALOGUE_COMPLETE, () => this._onDialogueComplete());
     eventBus.on(EVENTS.FINAL_CHOICE_MADE, ({ ending }) => this._onFinalChoiceMade(ending));
     eventBus.on(EVENTS.SCORE_CALCULATED, (data) => this._onScoreCalculated(data));
@@ -140,14 +158,28 @@ class GameManager {
     if (this._engine) this._engine.setScene('CITY_NORMAL');
     this._startGameLoop();
 
-    // Attack triggers after ~30s of city exploration OR area trigger
-    // Kaustub's engine calls triggerAttack() when ready
+    // Preserve Kaustub's engine integration if it provides custom exploration start
+    if (this._engine && typeof this._engine.startCityExploration === 'function') {
+      this._engine.startCityExploration();
+    } else {
+      // Safe fallback when running standalone without active gameplay triggers
+      if (this._cityFallbackTimer) clearTimeout(this._cityFallbackTimer);
+      this._cityFallbackTimer = setTimeout(() => {
+        if (gameState.getPhase() === GAME_PHASE.CITY_EXPLORATION) {
+          this.triggerAttack();
+        }
+      }, 5000);
+    }
   }
 
   /**
    * Called by Kaustub's engine when attack should begin.
    */
   triggerAttack() {
+    if (this._cityFallbackTimer) {
+      clearTimeout(this._cityFallbackTimer);
+      this._cityFallbackTimer = null;
+    }
     this._stopGameLoop();
     gameState.setPhase(GAME_PHASE.ATTACK_SEQUENCE);
     eventBus.emit(EVENTS.ATTACK_STARTED);
@@ -212,11 +244,20 @@ class GameManager {
         const choice = choiceSystem.getPendingChoice();
         this._renderer.showChoice(choice);
       }
-      // After choice: game engine restarts → level 1 continues → level complete
-      eventBus.once(EVENTS.CHOICE_MADE, () => {
-        setTimeout(() => {
-          eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
-        }, 2000);
+      // After choice + aftermath dialogue: level 1 completes
+      eventBus.once(EVENTS.CHOICE_MADE, (choiceEntry) => {
+        const option = CHOICES.flatMap(c => c.options).find(o => o.id === choiceEntry?.selected);
+        if (option?.consequences?.followUpDialogue) {
+          eventBus.once(EVENTS.DIALOGUE_COMPLETE, () => {
+            setTimeout(() => {
+              eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
+            }, 1000);
+          });
+        } else {
+          setTimeout(() => {
+            eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
+          }, 2000);
+        }
       });
     }
 
@@ -230,10 +271,19 @@ class GameManager {
         if (this._renderer) {
           this._renderer.showChoice(choiceSystem.getPendingChoice());
         }
-        eventBus.once(EVENTS.CHOICE_MADE, () => {
-          setTimeout(() => {
-            eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 2 });
-          }, 1500);
+        eventBus.once(EVENTS.CHOICE_MADE, (choiceEntry) => {
+          const option = CHOICES.flatMap(c => c.options).find(o => o.id === choiceEntry?.selected);
+          if (option?.consequences?.followUpDialogue) {
+            eventBus.once(EVENTS.DIALOGUE_COMPLETE, () => {
+              setTimeout(() => {
+                eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 2 });
+              }, 1000);
+            });
+          } else {
+            setTimeout(() => {
+              eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 2 });
+            }, 1500);
+          }
         });
       });
     }
@@ -292,7 +342,7 @@ class GameManager {
 
   _startGameLoop() {
     if (this._animationFrameId) return;
-    this._lastTimestamp = performance.now();
+    this._lastTimestamp = typeof performance !== 'undefined' ? performance.now() : Date.now();
     this._loop(this._lastTimestamp);
   }
 
@@ -311,12 +361,12 @@ class GameManager {
 
     if (this._renderer) this._renderer.render(state, dt);
 
-    this._animationFrameId = requestAnimationFrame((t) => this._loop(t));
+    this._animationFrameId = safeRequestAnimationFrame((t) => this._loop(t));
   }
 
   _stopGameLoop() {
     if (this._animationFrameId) {
-      cancelAnimationFrame(this._animationFrameId);
+      safeCancelAnimationFrame(this._animationFrameId);
       this._animationFrameId = null;
     }
   }
@@ -334,14 +384,32 @@ class GameManager {
   }
 
   reset() {
+    if (this._cityFallbackTimer) {
+      clearTimeout(this._cityFallbackTimer);
+      this._cityFallbackTimer = null;
+    }
     this._stopGameLoop();
     this._running = false;
     gameState.reset();
     if (this._engine) this._engine.reset();
   }
 
+  _onDialogueStart(data) {
+    if (!data) return;
+    const dialogueId = typeof data === 'string' ? data : data.dialogueId;
+    const dialogue = DIALOGUES[dialogueId] || (typeof data === 'object' && data.lines ? data : null);
+
+    if (dialogue && this._renderer) {
+      this._stopGameLoop();
+      this._renderer.showDialogue(dialogue);
+    }
+  }
+
   _onDialogueComplete() {
-    // Dialogue done — Kaustub's engine can resume if needed
+    // If running and no choice is blocking, resume game loop
+    if (this._running && !choiceSystem.isBlocking()) {
+      this._startGameLoop();
+    }
   }
 }
 
