@@ -17,6 +17,7 @@ gameManager.registerRenderer(renderer);
 
 import { kaustubEngine } from './gameplay/KaustubGameplayEngine.js';
 import { backendClient } from './backend/BackendClient.js';
+import { audioEngine } from './visuals/AudioEngine.js';
 
 // Register Kaustub's Gameplay Engine
 gameManager.registerEngine(kaustubEngine);
@@ -51,6 +52,9 @@ async function boot() {
     const btnStart = document.getElementById('btn-start');
     if (btnStart) {
       btnStart.addEventListener('click', async () => {
+        audioEngine.init();
+        audioEngine.startBGM();
+        audioEngine.playUIClick();
         const nameInput = document.getElementById('player-name');
         const name = nameInput?.value?.trim() || 'Player';
         if (startScreen) startScreen.classList.add('hidden');
