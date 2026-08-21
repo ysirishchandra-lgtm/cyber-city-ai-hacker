@@ -7,11 +7,13 @@
 import { ENDING, POWER_PATH } from '../core/GameState.js';
 import { ENDING_CONTENT } from '../story/StoryContent.js';
 import { shaderPipeline } from './ShaderPipeline.js';
+import { voiceEngine } from './VoiceEngine.js';
 
 export class DialogueAndChoiceUI {
   constructor() {
     this._time = 0;
     this._hoveredOption = -1;
+    this._lastSpokenLine = null;
   }
 
   update(dt) {
@@ -23,6 +25,12 @@ export class DialogueAndChoiceUI {
   renderDialogue(ctx, dialogue, currentLineIndex, w, h) {
     if (!dialogue || !dialogue.lines || currentLineIndex >= dialogue.lines.length) return;
     const line = dialogue.lines[currentLineIndex];
+
+    // Trigger spoken voice line if line changed
+    if (this._lastSpokenLine !== line.text) {
+      this._lastSpokenLine = line.text;
+      voiceEngine.speak(line.text, line.speaker);
+    }
 
     ctx.save();
     const boxW = Math.min(840, w - 48);

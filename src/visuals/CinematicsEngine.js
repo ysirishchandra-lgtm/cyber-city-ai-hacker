@@ -6,6 +6,7 @@
 
 import { shaderPipeline } from './ShaderPipeline.js';
 import { audioEngine } from './AudioEngine.js';
+import { voiceEngine } from './VoiceEngine.js';
 
 export class CinematicsEngine {
   constructor() {
@@ -73,6 +74,10 @@ export class CinematicsEngine {
       this.video.play().catch(() => {});
     }
 
+    if (this.panels.length > 0 && this.panels[0].text) {
+      voiceEngine.speak(this.panels[0].text, 'NARRATOR');
+    }
+
     if (phase === 'ATTACK') {
       shaderPipeline.triggerGlitch(0.8);
       shaderPipeline.addShake(0.7);
@@ -100,6 +105,9 @@ export class CinematicsEngine {
     } else {
       const panel = this.panels[this.currentIndex];
       audioEngine.playDialogueBlip();
+      if (panel && panel.text) {
+        voiceEngine.speak(panel.text, 'NARRATOR');
+      }
 
       if (panel.style === 'flash') {
         shaderPipeline.triggerFlash('#ffffff', 0.9);
@@ -116,6 +124,7 @@ export class CinematicsEngine {
     this.active = false;
     this.panels = [];
     shaderPipeline.setLetterbox(0.0);
+    voiceEngine.stop();
 
     if (this.video) {
       try {
