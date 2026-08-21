@@ -184,7 +184,7 @@ export class HeroAI {
   }
 
   takeDamage(amount, powerSystem) {
-    if (!this.isAlive || !this.inFinalBattle) return;
+    if (!this.isAlive) return;
 
     this.health -= amount;
 
@@ -197,10 +197,8 @@ export class HeroAI {
       this.health = 0;
       this.isAlive = false;
 
-      eventBus.emit(EVENTS.FINAL_BATTLE_STARTED, {
-        heroDefeated: true,
-        health: 0
-      });
+      // Report Atlas boss defeat to complete final mission objective
+      KaustubAPI.enemyDefeated('ATLAS_BOSS');
     }
   }
 

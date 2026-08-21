@@ -29,7 +29,10 @@ export class KaustubGameplayEngine {
 
     this.camera = { x: 0, y: 0 };
     this.keys = {};
-    this.mousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    this.mousePos = {
+      x: typeof window !== 'undefined' ? window.innerWidth / 2 : 400,
+      y: typeof window !== 'undefined' ? window.innerHeight / 2 : 300
+    };
 
     this.currentScene = 'BOOT';
     this.levelTransitionTimer = 0;
@@ -42,6 +45,8 @@ export class KaustubGameplayEngine {
   }
 
   _setupInputs() {
+    if (typeof window === 'undefined') return;
+
     window.addEventListener('keydown', (e) => {
       this.keys[e.key] = true;
 
@@ -76,6 +81,7 @@ export class KaustubGameplayEngine {
     this.projectiles = [];
     this.particleEffects = [];
     this.levelTransitionTimer = 0;
+    this._areaTriggersChecked = {};
   }
 
   setScene(sceneName) {
@@ -107,6 +113,7 @@ export class KaustubGameplayEngine {
       new Enemy('drone_3', 750, 250, ENEMY_TYPES.DRONE),
       new Enemy('drone_4', 850, 450, ENEMY_TYPES.DRONE)
     ];
+    this._areaTriggersChecked = {};
   }
 
   setupLevel2() {
@@ -122,6 +129,7 @@ export class KaustubGameplayEngine {
     this.hero.x = 1300;
     this.hero.y = 300;
     this.hero.detectPlayer(this.player);
+    this._areaTriggersChecked = {};
   }
 
   setupLevel3() {
@@ -134,11 +142,15 @@ export class KaustubGameplayEngine {
     ];
 
     this.hero.triggerConfrontation();
+    this._areaTriggersChecked = {};
   }
 
   setupFinalBattle() {
     this.enemies = [];
+    this.hero.x = 800;
+    this.hero.y = 300;
     this.hero.startFinalBattle();
+    KaustubAPI.npcInteracted('ATLAS_FINAL');
   }
 
   update(state, dt) {
@@ -150,44 +162,44 @@ export class KaustubGameplayEngine {
     this.player.handleInput(this.keys, this.mousePos, this.camera, dt);
 
     // Camera follow
-    const targetCamX = this.player.x - window.innerWidth / 2;
-    const targetCamY = this.player.y - window.innerHeight / 2;
+    const winW = typeof window !== 'undefined' ? window.innerWidth : 800;
+    const winH = typeof window !== 'undefined' ? window.innerHeight : 600;
+    const targetCamX = this.player.x - winW / 2;
+    const targetCamY = this.player.y - winH / 2;
     this.camera.x += (targetCamX - this.camera.x) * 0.1;
     this.camera.y += (targetCamY - this.camera.y) * 0.1;
 
+    // Check dynamic area triggers based on player progression
+    if (this.currentScene === 'LEVEL_1' || this.currentScene === 'CITY_NORMAL') {
+      KaustubAPI.playerEnteredArea('SAFEHOUSE_L1');
+      if (this.player.x > 350) {
+        KaustubAPI.npcInteracted('INFORMANT_KIRA');
+        KaustubAPI.playerEnteredArea('OLD_DISTRICT');
+      }
+    } else if (this.currentScene === 'LEVEL_2') {
+      if (this.player.x > 450) {
+        KaustubAPI.playerEscapedArea('PATROL_ZONE');
+      }
+      if (this.player.x > 900) {
+        KaustubAPI.playerEnteredArea('ROOFTOP_MEETING');
+      }
+    } else if (this.currentScene === 'LEVEL_3' || this.currentScene === 'FINAL_BATTLE') {
+      if (this.player.x > 600) {
+        KaustubAPI.playerEnteredArea('ATLAS_DISTRICT');
+        KaustubAPI.npcInteracted('ATLAS_FINAL');
+      }
+    }
+
     // Update Enemies
-    let aliveCount = 0;
     this.enemies.forEach(enemy => {
       if (enemy.isAlive) {
-        aliveCount++;
         enemy.update(dt, this.player, this.powerSystem, this.projectiles);
       }
     });
 
-    // Level progression trigger logic
-    if (aliveCount === 0) {
-      if (this.currentScene === 'LEVEL_1' || this.currentScene === 'CITY_NORMAL') {
-        if (!gameState.hasPower()) {
-          gameState.receiveScar();
-          const stateData = gameState.get();
-          const dominantPath = gameState._getDominantPath(stateData) || POWER_PATH.AGGRESSIVE;
-          gameState.awakePower(dominantPath);
-          eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
-        }
-      } else if (this.currentScene === 'LEVEL_2') {
-        eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 2 });
-      } else if (this.currentScene === 'LEVEL_3') {
-        eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 3 });
-      }
-    }
-
     // Update Hero AI
     if (this.currentScene !== 'LEVEL_1' && this.currentScene !== 'CITY_NORMAL') {
       this.hero.update(dt, this.player, this.powerSystem, this.projectiles, this.particleEffects);
-
-      if (this.currentScene === 'FINAL_BATTLE' && !this.hero.isAlive) {
-        gameState.completeMission('M3_FINAL_BATTLE');
-      }
     }
 
     // Update Projectiles
@@ -221,6 +233,7 @@ export class KaustubGameplayEngine {
   }
 
   exportRenderState() {
+    if (typeof window === 'undefined') return;
     window.__SCAR_GAMEPLAY_STATE__ = {
       player: {
         x: this.player.x,

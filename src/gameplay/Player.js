@@ -69,14 +69,8 @@ export class Player {
 
     if (this.isSprinting) {
       this.stamina = Math.max(0, this.stamina - 30 * dt);
-      this.sprintDodgeTimer += dt;
-      if (this.sprintDodgeTimer > 1.5) {
-        this.sprintDodgeTimer = 0;
-        gameState.recordChoice('DODGE_TACTICAL', 'Sprinted to outmaneuver target', 'STRATEGIC');
-      }
     } else {
       this.stamina = Math.min(this.maxStamina, this.stamina + 20 * dt);
-      this.sprintDodgeTimer = 0;
     }
 
     this.vx = dx * currentSpeed;

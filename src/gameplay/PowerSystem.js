@@ -96,8 +96,6 @@ export class PowerSystem {
         }
       }
     });
-
-    gameState.recordChoice('POWER_USE_AGGRESSIVE', 'Activated Destruction Nova', 'AGGRESSIVE');
   }
 
   executeKineticBarrier(player, enemies, particleEffects) {
@@ -126,8 +124,6 @@ export class PowerSystem {
         }
       }
     });
-
-    gameState.recordChoice('POWER_USE_PROTECTIVE', 'Activated Kinetic Barrier', 'PROTECTIVE');
   }
 
   executeStasisHack(player, enemies, particleEffects) {
@@ -153,7 +149,5 @@ export class PowerSystem {
         }
       }
     });
-
-    gameState.recordChoice('POWER_USE_STRATEGIC', 'Activated Stasis Hack', 'STRATEGIC');
   }
 }

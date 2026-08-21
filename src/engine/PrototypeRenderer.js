@@ -42,6 +42,7 @@ export class PrototypeRenderer {
   }
 
   async init() {
+    if (typeof document === 'undefined') return;
     this._canvas = document.getElementById(this._canvasId) || document.querySelector('canvas');
     if (!this._canvas) throw new Error(`Canvas #${this._canvasId} not found`);
 
