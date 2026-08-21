@@ -1,32 +1,26 @@
-# SCAR — KAUSTUB FINAL GAMEPLAY QA
+# KAUSTUB — V0.1.1 HANDOFF
 
-Branch: feature/kaustub-unity-gameplay
-Commit: 34c8f5b
-
-Unity Version: 6000.0.0f1 (Unity 6)
-
-Compilation: PASS
-Play Mode: PASS
+Gameplay integration: PASS
 Player: PASS
 Combat: PASS
 Enemy AI: PASS
-Investigation: PASS
 Mini-Boss: PASS
 Power Awakening: PASS
-Game Over: PASS
-Offline Gameplay: PASS
+ADAPT: PASS
+Level 1 flow: PASS
+Unity Play Mode: BLOCKED (Headless CLI environment; GUI Play Mode runs in Unity 6 Editor GUI)
+Automated tests: 29/29 PASSED
+Fake Data: 0
+Files changed:
+- `src/gameplay/KaustubGameplayEngine.js`
+- `src/gameplay/PowerSystem.js`
+- `src/gameplay/Player.js`
+- `Assets/Scripts/Gameplay/Abilities/AbilityManager.cs`
+- `Assets/Scripts/Gameplay/Health/HealthComponent.cs`
+- `Assets/Scripts/Gameplay/Enemy/MiniBossController.cs`
+- `Assets/Scripts/Gameplay/Level/Level1Manager.cs`
+- `Assets/Scripts/Gameplay/Level/ClueInteractable.cs`
+- `docs/KAUSTUB_UNITY_GAMEPLAY_HANDOFF.md`
 
-Gameplay Regression:
-29/29 PASS
-
-Console Errors:
-0
-
-Fake Data:
-0
-
-Changes Made:
-None (Zero code mutations needed; all interface contracts fully verified).
-
-FINAL STATUS:
-GAMEPLAY VERIFIED AND FROZEN
+Commit: 5e1e08febd74f39600df0849e064eefbef8787c2
+Branch: feature/kaustub-unity-gameplay
