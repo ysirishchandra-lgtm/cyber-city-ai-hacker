@@ -36,6 +36,9 @@ export class Player {
     this.lastEmittedX = x;
     this.lastEmittedY = y;
     this.dodgeTimer = 0;
+    this.comboCounter = 0;
+    this.perfectDodgeBoost = 1.0;
+    this.executeTarget = null;
   }
 
   reset(x = 100, y = 100) {
@@ -48,20 +51,74 @@ export class Player {
     this.isAttacking = false;
     this.comboStep = 0;
     this.comboResetTimer = 0;
+    this.comboCounter = 0;
+    this.perfectDodgeBoost = 1.0;
+    this.executeTarget = null;
     this.dodgeTimer = 0;
     KaustubAPI.updatePosition(x, y);
   }
 
-  dodge() {
+  dodge(enemies = []) {
     if (this.stamina >= 20 && this.dodgeTimer <= 0) {
       this.stamina -= 20;
       this.dodgeTimer = 0.35; // 350ms invulnerability window + dash
-      this.x += Math.cos(this.facingAngle) * 45;
-      this.y += Math.sin(this.facingAngle) * 45;
+      this.x += Math.cos(this.facingAngle) * 55;
+      this.y += Math.sin(this.facingAngle) * 55;
+
+      // Check for Perfect Dodge (if nearby enemy is attacking within 80px)
+      let isPerfect = false;
+      enemies.forEach(en => {
+        if (en.isAlive && Math.hypot(en.x - this.x, en.y - this.y) < 85 && en.attackCooldown > 1.0) {
+          isPerfect = true;
+        }
+      });
+
+      if (isPerfect) {
+        this.perfectDodgeBoost = 2.0; // 2x damage counter-attack!
+        import('../visuals/ShaderPipeline.js').then(({ shaderPipeline }) => {
+          shaderPipeline.triggerFlash('#00f3ff', 0.4);
+          shaderPipeline.triggerGlitch(0.3);
+        });
+        import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+          particleSystem.spawnDamageNumber(this.x, this.y - 25, 'PERFECT DODGE!', true, '#00f3ff');
+        });
+      }
+
       KaustubAPI.updatePosition(Math.round(this.x), Math.round(this.y));
       return true;
     }
     return false;
+  }
+
+  execute(enemies, particleEffects) {
+    if (!this.executeTarget || !this.executeTarget.isAlive) return false;
+
+    const enemy = this.executeTarget;
+    const executeDmg = 150;
+    enemy.takeDamage(executeDmg, 'EXECUTION');
+    this.executeTarget = null;
+
+    // Heal player on brutal finisher
+    const currentHp = gameState.getField('health');
+    gameState.setHealth(Math.min(100, currentHp + 25));
+
+    import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+      particleSystem.spawnDamageNumber(enemy.x, enemy.y, 'EXECUTION 150!', true, '#ff0033');
+      particleSystem.spawnImpact(enemy.x, enemy.y, '#ff0033', 25);
+      particleSystem.spawnBloodSpark(enemy.x, enemy.y);
+    });
+
+    import('../visuals/ShaderPipeline.js').then(({ shaderPipeline }) => {
+      shaderPipeline.addShake(0.85);
+      shaderPipeline.triggerFlash('#ff0033', 0.4);
+    });
+
+    import('../visuals/AudioEngine.js').then(({ audioEngine }) => {
+      audioEngine.playSlash();
+      audioEngine.playImpact();
+    });
+
+    return true;
   }
 
   handleInput(keys, mousePos, camera, dt) {
@@ -153,7 +210,10 @@ export class Player {
     const baseDamage = 25;
     const comboMultipliers = { 1: 1.0, 2: 1.28, 3: 1.8 };
     const isCrit = this.comboStep === 3;
-    const attackDamage = Math.round(baseDamage * (comboMultipliers[this.comboStep] || 1.0));
+    const dodgeMul = this.perfectDodgeBoost;
+    this.perfectDodgeBoost = 1.0; // Consume counter-attack boost
+
+    const attackDamage = Math.round(baseDamage * (comboMultipliers[this.comboStep] || 1.0) * dodgeMul);
     const attackArc = Math.PI / 2;
 
     let hitAny = false;
@@ -165,11 +225,15 @@ export class Player {
         x: this.x + Math.cos(this.facingAngle) * 30,
         y: this.y + Math.sin(this.facingAngle) * 30,
         angle: this.facingAngle,
-        color: slashColors[this.comboStep] || '#00ffff',
+        color: dodgeMul > 1.0 ? '#ffb700' : (slashColors[this.comboStep] || '#00ffff'),
         life: 0.18,
         maxLife: 0.18
       });
     }
+
+    // Forward step impulse on melee attack (snappy action game feel)
+    this.x += Math.cos(this.facingAngle) * 12;
+    this.y += Math.sin(this.facingAngle) * 12;
 
     // Record Aggressive choice action influence in GameState
     gameState.recordChoice('COMBAT_MELEE_ATTACK', `Executed combo strike step ${this.comboStep}`, 'AGGRESSIVE');
@@ -188,7 +252,13 @@ export class Player {
           if (angleDiff <= attackArc / 2) {
             enemy.takeDamage(attackDamage, 'MELEE');
             hitAny = true;
+            this.comboCounter++;
             
+            // Check for execution threshold (HP <= 25%)
+            if (enemy.isAlive && enemy.health <= enemy.maxHealth * 0.28) {
+              this.executeTarget = enemy;
+            }
+
             // Knockback on hit, extra knockback on 3rd combo finisher
             const knockbackDist = isCrit ? 45 : 25;
             enemy.x += Math.cos(this.facingAngle) * knockbackDist;
@@ -196,7 +266,7 @@ export class Player {
 
             // Spawn floating damage numbers & impact sparks
             import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
-              particleSystem.spawnDamageNumber(enemy.x, enemy.y, attackDamage, isCrit, isCrit ? '#ff0055' : '#00ffff');
+              particleSystem.spawnDamageNumber(enemy.x, enemy.y, attackDamage, isCrit || dodgeMul > 1.0, isCrit ? '#ff0055' : (dodgeMul > 1.0 ? '#ffb700' : '#00ffff'));
               particleSystem.spawnImpact(enemy.x, enemy.y, isCrit ? '#ff0055' : '#00f3ff', isCrit ? 14 : 8);
             });
 

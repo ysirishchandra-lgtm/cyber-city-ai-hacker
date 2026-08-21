@@ -52,6 +52,10 @@ export class KaustubGameplayEngine {
       this.keys[e.key] = true;
 
       if ((e.key === 'e' || e.key === 'E') && gameState.isPlaying()) {
+        if (this.player.executeTarget && this.player.executeTarget.isAlive) {
+          this.player.execute(this.enemies, this.particleEffects);
+          return;
+        }
         KaustubAPI.npcInteracted('INFORMANT_KIRA');
         eventBus.emit(EVENTS.CLUE_DISCOVERED, { target: 'INTERACTABLE_CLUE' });
       }
@@ -81,7 +85,7 @@ export class KaustubGameplayEngine {
       }
 
       if (e.key === ' ' && gameState.isPlaying()) {
-        this.player.dodge();
+        this.player.dodge(this.enemies);
       }
     });
 

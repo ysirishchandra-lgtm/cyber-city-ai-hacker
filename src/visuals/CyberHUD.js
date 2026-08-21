@@ -47,6 +47,31 @@ export class CyberHUD {
 
     // 6. Bottom-Right: Tactical Action Ability Diamonds (Adapt Q, Dodge Space, Focus R)
     this._renderActionAbilityDiamonds(ctx, state, w - 240, h - 70);
+
+    // 7. Dynamic Combat & Execution Feedback
+    this._renderCombatFeedback(ctx, w, h);
+  }
+
+  _renderCombatFeedback(ctx, w, h) {
+    if (typeof window === 'undefined') return;
+    const gameplayState = window.__SCAR_GAMEPLAY_STATE__;
+    if (!gameplayState || !gameplayState.player) return;
+
+    ctx.save();
+
+    // Execution Prompt
+    const lowHpEnemy = gameplayState.enemies?.find(e => e.health <= e.maxHealth * 0.28);
+    if (lowHpEnemy) {
+      const pulse = Math.sin(this._time * 8) * 4;
+      ctx.fillStyle = 'rgba(255, 0, 51, 0.9)';
+      ctx.shadowColor = '#ff0033';
+      ctx.shadowBlur = 16;
+      ctx.font = 'bold 16px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`⚡ [E] EXECUTE ENEMY`, w / 2, h / 2 + 50 + pulse);
+    }
+
+    ctx.restore();
   }
 
   _renderPlayerStatus(ctx, state, x, y) {
