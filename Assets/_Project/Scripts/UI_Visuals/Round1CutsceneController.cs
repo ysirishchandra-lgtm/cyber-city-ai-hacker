@@ -24,6 +24,14 @@ namespace Scar.UI_Visuals
         private bool _isPlaying = false;
         private bool _isSkipped = false;
 
+        public static Round1CutsceneController Instance { get; private set; }
+
+        private void Awake()
+        {
+            if (Instance == null) Instance = this;
+            else Destroy(gameObject);
+        }
+
         private void Start()
         {
             if (_cutsceneCanvasGroup != null)
@@ -48,7 +56,7 @@ namespace Scar.UI_Visuals
             }
         }
 
-        public void PlayCutscene(string characterId)
+        public void StartIntro(string characterId)
         {
             if (_isPlaying) return;
             
@@ -60,7 +68,6 @@ namespace Scar.UI_Visuals
             _isPlaying = true;
             _isSkipped = false;
 
-            // 1. Prepare UI Canvas
             if (_cutsceneCanvasGroup != null)
             {
                 _cutsceneCanvasGroup.gameObject.SetActive(true);
@@ -72,13 +79,12 @@ namespace Scar.UI_Visuals
                 _skipPromptOverlay.SetActive(true);
             }
 
-            // 2. Play Video
             if (_videoPlayer != null)
             {
                 _videoPlayer.loopPointReached += OnVideoFinished;
+                // Assuming video clip is assigned in inspector or loaded from 'Assets/_Project/Videos/scar1.mp4'
                 _videoPlayer.Play();
 
-                // Wait until finished or skipped
                 while (_videoPlayer.isPlaying && !_isSkipped)
                 {
                     yield return null;
@@ -91,77 +97,62 @@ namespace Scar.UI_Visuals
                 
                 _videoPlayer.loopPointReached -= OnVideoFinished;
             }
-            else
-            {
-                // Fallback if no video player assigned
-                Debug.LogWarning("[Round1CutsceneController] No VideoPlayer assigned, simulating delay.");
-                float timer = 0;
-                while (timer < 3f && !_isSkipped)
-                {
-                    timer += Time.deltaTime;
-                    yield return null;
-                }
-            }
 
-            // 3. Transition to Gameplay
             yield return StartCoroutine(TransitionToGameplay(characterId));
         }
 
         private void OnVideoFinished(VideoPlayer vp)
         {
-            // Video automatically reached the end
-            if (!_isSkipped)
-            {
-                // The coroutine will exit the while loop naturally
-            }
+            // Allowed to naturally fall through
         }
 
         private void SkipCutscene()
         {
             _isSkipped = true;
-            Debug.Log("[Round1CutsceneController] Cutscene Skipped.");
         }
 
         private IEnumerator TransitionToGameplay(string characterId)
         {
             if (_skipPromptOverlay != null) _skipPromptOverlay.SetActive(false);
 
-            // Fade out video canvas
             if (_cutsceneCanvasGroup != null)
             {
                 yield return StartCoroutine(FadeCanvasGroup(_cutsceneCanvasGroup, 1f, 0f, 0.5f));
                 _cutsceneCanvasGroup.gameObject.SetActive(false);
             }
 
-            // Completely disable Lobby if not already
             if (_lobbyCanvas != null) _lobbyCanvas.SetActive(false);
-
-            // Activate Gameplay Canvas
             if (_gameplayCanvas != null) _gameplayCanvas.SetActive(true);
 
-            // Initialize Gameplay and HUD
-            InitializeRound1(characterId);
+            OnCutsceneFinished(characterId);
 
             _isPlaying = false;
         }
 
-        private void InitializeRound1(string characterId)
+        private void OnCutsceneFinished(string characterId)
         {
-            // 1. Fire core events to set phase
             EventBus.Publish(new GameEvents.PhaseChangedEvent { NewPhase = GamePhase.LEVEL_1 });
 
-            // 2. Initialize HUD
-            if (_cyberHUD != null)
+            if (CyberHUD.Instance != null)
             {
-                // Reset score, start timer (8 mins = 480 seconds)
+                CyberHUD.Instance.ActivateHUD();
+                CyberHUD.Instance.StartDeadlineTimer(480f);
+            }
+            else if (_cyberHUD != null)
+            {
+                // Fallback if singleton is not fully hooked up in scene
+                _cyberHUD.ActivateHUD();
                 _cyberHUD.StartDeadlineTimer(480f);
             }
 
-            // 3. Enable 2D Player Controls (Depends on the character architecture)
-            Debug.Log($"[Round1CutsceneController] Round 1 Initialized. Character: {characterId}. Controls enabled.");
-            // Example:
-            // var player = GameObject.FindGameObjectWithTag("Player");
-            // if (player != null) player.GetComponent<PlayerController>().EnableControls(true);
+            if (LevelManager.Instance != null)
+            {
+                LevelManager.Instance.SpawnCharacter(characterId);
+            }
+            else
+            {
+                Debug.Log($"[Round1CutsceneController] OnCutsceneFinished: LevelManager.Instance.SpawnCharacter({characterId})");
+            }
         }
 
         private IEnumerator FadeCanvasGroup(CanvasGroup cg, float startAlpha, float endAlpha, float duration)

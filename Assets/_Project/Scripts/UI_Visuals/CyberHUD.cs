@@ -16,6 +16,14 @@ namespace Scar.UI
     /// </summary>
     public class CyberHUD : MonoBehaviour
     {
+        public static CyberHUD Instance { get; private set; }
+
+        private void Awake()
+        {
+            if (Instance == null) Instance = this;
+            else Destroy(gameObject);
+        }
+
         [Header("Player Vital Visor")]
         [SerializeField] private Slider _healthSlider;
         [SerializeField] private Slider _ghostHealthSlider;
@@ -126,6 +134,11 @@ namespace Scar.UI
                 _deadlineTimerText.text = string.Format("{0:0}:{1:00}", minutes, seconds);
                 _deadlineTimerText.color = _timerNormalColor;
             }
+        }
+
+        public void ActivateHUD()
+        {
+            gameObject.SetActive(true);
         }
 
         private void SubscribeEvents()

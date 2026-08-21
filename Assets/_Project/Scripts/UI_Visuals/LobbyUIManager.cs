@@ -128,26 +128,17 @@ namespace Scar.UI_Visuals
             // Visual juice on start
             StartCoroutine(ScalePunch(_startRunBtn.transform, 1.2f, 0.1f));
             
-            // Trigger Cutscene
-            var cutsceneController = FindObjectOfType<Round1CutsceneController>();
-            if (cutsceneController != null)
-            {
-                cutsceneController.PlayCutscene(selectedCharacter.characterId);
-            }
-            else
-            {
-                // Fallback if no cutscene controller exists in scene
-                StartCoroutine(FadeOutLobby());
-            }
+            // Fade out the Lobby Canvas via CanvasGroup.alpha lerp over 1 second, then call StartIntro
+            StartCoroutine(FadeOutLobbyAndStartIntro(selectedCharacter.characterId));
         }
 
-        private System.Collections.IEnumerator FadeOutLobby()
+        private System.Collections.IEnumerator FadeOutLobbyAndStartIntro(string characterId)
         {
             var canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
 
             float elapsed = 0f;
-            float duration = 0.5f;
+            float duration = 1.0f; // Fade out over 1 second as requested
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
@@ -156,9 +147,15 @@ namespace Scar.UI_Visuals
             }
             canvasGroup.alpha = 0f;
             
-            // Fallback transitions
-            // GameManager.Instance.GameState.SetPlayerIdentity(..., _characters[_currentIndex].characterId);
-            // EventBus.Publish(new GameEvents.PhaseChangedEvent { NewPhase = GamePhase.GAMEPLAY });
+            if (Round1CutsceneController.Instance != null)
+            {
+                Round1CutsceneController.Instance.StartIntro(characterId);
+            }
+            else
+            {
+                var fallbackController = FindObjectOfType<Round1CutsceneController>();
+                if (fallbackController != null) fallbackController.StartIntro(characterId);
+            }
         }
 
         private System.Collections.IEnumerator ScalePunch(Transform target, float punchScale, float duration)
