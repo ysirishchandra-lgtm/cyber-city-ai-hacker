@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - m_Path: Assets/_Project/Scenes/MainMenu.unity
+    m_Enabled: 1
+    m_Guid: 00000000000000000000000000000001
+  - m_Path: Assets/_Project/Scenes/Prologue.unity
+    m_Enabled: 1
+    m_Guid: 00000000000000000000000000000002
+  - m_Path: Assets/_Project/Scenes/Level1_Streets.unity
+    m_Enabled: 1
+    m_Guid: 00000000000000000000000000000003
+  - m_Path: Assets/_Project/Scenes/Level2_Atlas.unity
+    m_Enabled: 1
+    m_Guid: 00000000000000000000000000000004
+  - m_Path: Assets/_Project/Scenes/Ending.unity
+    m_Enabled: 1
+    m_Guid: 00000000000000000000000000000005
