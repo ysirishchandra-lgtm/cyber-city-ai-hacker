@@ -1,18 +1,20 @@
 /**
  * SCAR — THE LAST CHOICE
- * CharacterRenderer.js — Humanoid 3rd-Person Character & Entity Presentation
+ * CharacterRenderer.js — Fluid Humanoid Combat Animations, Stride Physics & Enemy Models
  * Author: Ashwidha (Visual / UI / Cinematic Lead)
- *
- * Renders full humanoid protagonist with locomotion stride cycles, billowing trenchcoat physics,
- * glowing crimson scar, weapon combo arcs, and distinct humanoid / mech enemy models.
  */
 
 import { POWER_PATH } from '../core/GameState.js';
+import { audioEngine } from './AudioEngine.js';
+import { particleSystem } from './ParticleSystem.js';
 
 export class CharacterRenderer {
   constructor() {
     this._time = 0;
     this.trailHistory = [];
+    this.lastAttacking = false;
+    this.comboStep = 0;
+    this.lastHealth = 100;
   }
 
   update(dt) {
@@ -38,38 +40,58 @@ export class CharacterRenderer {
       isMoving = false,
       isSprinting = false,
       isAttacking = false,
-      attackAnimationTimer = 0,
+      sprintDodgeTimer = 0,
+      health = 100,
       stamina = 100
     } = player;
+
+    const isDodging = sprintDodgeTimer > 0;
+
+    // Audio & Combat Reaction triggers
+    if (isAttacking && !this.lastAttacking) {
+      this.comboStep = (this.comboStep + 1) % 3;
+      audioEngine.playSlash();
+    }
+    this.lastAttacking = isAttacking;
+
+    if (health < this.lastHealth) {
+      audioEngine.playHurt();
+      particleSystem.spawnBloodSpark(x, y);
+    }
+    this.lastHealth = health;
 
     const speed = Math.hypot(vx, vy);
     const isMovingActual = isMoving || speed > 10;
     const strideFreq = isSprinting ? 16 : isMovingActual ? 10 : 0;
     const stridePhase = Math.sin(this._time * strideFreq);
-    const coatFlutter = Math.sin(this._time * 12 + (speed * 0.05)) * (isSprinting ? 8 : 4);
+    const coatFlutter = Math.sin(this._time * 12 + (speed * 0.05)) * (isSprinting ? 9 : 4);
 
-    // 1. Record Sprint Motion Blur Ghost Trails
-    if (isSprinting && Math.random() < 0.35) {
+    // 1. Record Sprint & Dodge Blur Trails
+    if ((isSprinting || isDodging) && Math.random() < 0.4) {
       this.trailHistory.push({
         x,
         y,
         angle: facingAngle,
-        life: 0.18,
-        maxLife: 0.18,
-        color: state?.powerUnlocked ? this._getPowerColor(state.powerPath) : 'rgba(0, 243, 255, 0.4)'
+        life: 0.2,
+        maxLife: 0.2,
+        color: state?.powerUnlocked ? this._getPowerColor(state.powerPath) : 'rgba(0, 243, 255, 0.45)'
       });
+
+      if (isDodging && Math.random() < 0.3) {
+        particleSystem.spawnDashTrail(x, y, facingAngle, '#00f3ff');
+      }
     }
 
     // Render Ghost Trails
     for (const trail of this.trailHistory) {
-      const alpha = (trail.life / trail.maxLife) * 0.4;
+      const alpha = (trail.life / trail.maxLife) * 0.45;
       ctx.save();
       ctx.translate(trail.x, trail.y);
       ctx.rotate(trail.angle);
       ctx.fillStyle = trail.color;
       ctx.globalAlpha = alpha;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 14, 8, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -77,7 +99,7 @@ export class CharacterRenderer {
     ctx.save();
     ctx.translate(x, y);
 
-    // 2. Realistic Ground Drop Shadow (Oval with soft blur)
+    // 2. Ground Drop Shadow (Oval)
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
     ctx.beginPath();
@@ -113,8 +135,14 @@ export class CharacterRenderer {
       ctx.restore();
     }
 
-    // 4. Rotate to Facing / Aiming Direction
+    // 4. Rotate Facing Direction
     ctx.rotate(facingAngle);
+
+    // Dodge Roll Tumble Rotation
+    if (isDodging) {
+      const rollAngle = (1 - sprintDodgeTimer / 0.3) * Math.PI * 2;
+      ctx.rotate(rollAngle);
+    }
 
     // ─── Humanoid Body Components ───────────────────────────────────────────
 
@@ -154,8 +182,7 @@ export class CharacterRenderer {
     ctx.lineTo(12, 0);
     ctx.lineTo(8, 12);
     ctx.lineTo(-6, 10);
-    // Billowing coat tails stretching backwards
-    const coatStretch = isSprinting ? -22 : -16;
+    const coatStretch = isSprinting ? -24 : -16;
     ctx.quadraticCurveTo(-14, coatFlutter, coatStretch, coatFlutter * 1.5);
     ctx.quadraticCurveTo(-14, -coatFlutter, -6, -10);
     ctx.closePath();
@@ -173,7 +200,6 @@ export class CharacterRenderer {
     ctx.fill();
     ctx.stroke();
 
-    // Cyber Chest Core / Harness
     ctx.fillStyle = '#0e0e18';
     ctx.fillRect(-3, -5, 7, 10);
     ctx.restore();
@@ -184,25 +210,22 @@ export class CharacterRenderer {
     ctx.beginPath();
     ctx.arc(2, -11, 4.5, 0, Math.PI * 2);
     ctx.fill();
-    // Left Hand (Guarding or natural swing)
     ctx.fillStyle = '#00f3ff';
     ctx.beginPath();
     ctx.arc(6 - stridePhase * 3, -11, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // E. Right Arm & Energized Weapon Hand
+    // E. Right Arm & Energized Katana
     ctx.save();
     ctx.fillStyle = '#1c1c2e';
     ctx.beginPath();
     ctx.arc(2, 11, 4.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Cyber Weapon Blade / Katana in Right Hand
     const bladeColor = state?.powerUnlocked ? this._getPowerColor(state.powerPath) : '#00f3ff';
-    const bladeReach = isAttacking ? 28 : 16;
+    const bladeReach = isAttacking ? 32 : 18;
 
-    // Right Hand
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(8 + stridePhase * 3, 11, 3.5, 0, Math.PI * 2);
@@ -211,8 +234,8 @@ export class CharacterRenderer {
     // Energy Blade
     ctx.strokeStyle = bladeColor;
     ctx.shadowColor = bladeColor;
-    ctx.shadowBlur = isAttacking ? 18 : 6;
-    ctx.lineWidth = isAttacking ? 3.5 : 2;
+    ctx.shadowBlur = isAttacking ? 22 : 8;
+    ctx.lineWidth = isAttacking ? 4 : 2;
     ctx.beginPath();
     ctx.moveTo(8 + stridePhase * 3, 11);
     ctx.lineTo(8 + stridePhase * 3 + bladeReach, 11);
@@ -221,13 +244,12 @@ export class CharacterRenderer {
 
     // F. Head, Cyber Visor & THE GLOWING CRIMSON SCAR
     ctx.save();
-    // Head / Hair Silhouette
     ctx.fillStyle = '#2d2d48';
     ctx.beginPath();
     ctx.arc(4, 0, 7.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Cyber Visor / Optical Eye
+    // Visor
     ctx.fillStyle = '#00f3ff';
     ctx.shadowColor = '#00f3ff';
     ctx.shadowBlur = 8;
@@ -239,7 +261,7 @@ export class CharacterRenderer {
       const scarPulse = Math.sin(this._time * 8) * 0.35 + 0.65;
       ctx.strokeStyle = `rgba(255, 0, 40, ${scarPulse})`;
       ctx.shadowColor = '#ff0033';
-      ctx.shadowBlur = 14;
+      ctx.shadowBlur = 16;
       ctx.lineWidth = 2.5;
 
       ctx.beginPath();
@@ -248,8 +270,7 @@ export class CharacterRenderer {
       ctx.lineTo(4, 4);
       ctx.stroke();
 
-      // Spark bleed from scar
-      if (Math.random() < 0.25) {
+      if (Math.random() < 0.3) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(5 + (Math.random() * 4 - 2), -2 + (Math.random() * 4 - 2), 2, 2);
       }
@@ -257,23 +278,33 @@ export class CharacterRenderer {
     }
     ctx.restore();
 
-    // 6. Dynamic Attack Arc & Slash Trail
+    // 6. Dynamic 3-Hit Attack Arc & Slash Trail
     if (isAttacking) {
       ctx.save();
-      const slashColor = state?.powerUnlocked ? this._getPowerColor(state.powerPath) : 'rgba(0, 243, 255, 0.8)';
+      const slashColor = state?.powerUnlocked ? this._getPowerColor(state.powerPath) : 'rgba(0, 243, 255, 0.85)';
       ctx.strokeStyle = slashColor;
       ctx.shadowColor = slashColor;
-      ctx.shadowBlur = 22;
-      ctx.lineWidth = 4;
+      ctx.shadowBlur = 24;
+      ctx.lineWidth = 4.5;
       ctx.beginPath();
-      ctx.arc(6, 0, 36, -Math.PI * 0.45, Math.PI * 0.45);
+
+      if (this.comboStep === 0) {
+        // Combo 1: Horizontal Slash
+        ctx.arc(6, 0, 40, -Math.PI * 0.45, Math.PI * 0.45);
+      } else if (this.comboStep === 1) {
+        // Combo 2: Rising Upper Cut
+        ctx.arc(8, 0, 45, -Math.PI * 0.6, Math.PI * 0.25);
+      } else {
+        // Combo 3: Heavy Cleave
+        ctx.arc(10, 0, 50, -Math.PI * 0.5, Math.PI * 0.5);
+      }
       ctx.stroke();
 
-      // Inner cutting ribbon
+      // Inner white edge
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(6, 0, 36, -Math.PI * 0.3, Math.PI * 0.3);
+      ctx.arc(8, 0, 40, -Math.PI * 0.3, Math.PI * 0.3);
       ctx.stroke();
       ctx.restore();
     }
@@ -315,16 +346,16 @@ export class CharacterRenderer {
 
       // Red Targeting Ground Spotlight
       ctx.save();
-      const spotGrad = ctx.createRadialGradient(8, 0, 2, 16, 0, 35);
-      spotGrad.addColorStop(0, 'rgba(255, 0, 85, 0.35)');
+      const spotGrad = ctx.createRadialGradient(8, 0, 2, 16, 0, 38);
+      spotGrad.addColorStop(0, 'rgba(255, 0, 85, 0.38)');
       spotGrad.addColorStop(1, 'rgba(255, 0, 85, 0)');
       ctx.fillStyle = spotGrad;
       ctx.beginPath();
-      ctx.arc(16, 0, 35, 0, Math.PI * 2);
+      ctx.arc(16, 0, 38, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
-      // 4 Carbon-Fiber Rotor Arms & Spinning Blades
+      // Rotor Arms
       ctx.strokeStyle = '#333348';
       ctx.lineWidth = 2.5;
       ctx.beginPath();
@@ -334,7 +365,7 @@ export class CharacterRenderer {
 
       // Spinning Rotor Discs
       const rotorBlur = Math.sin(this._time * 25) * 5;
-      ctx.fillStyle = 'rgba(0, 243, 255, 0.3)';
+      ctx.fillStyle = 'rgba(0, 243, 255, 0.35)';
       [[-16, -14], [16, 14], [-16, 14], [16, -14]].forEach(([rx, ry]) => {
         ctx.beginPath();
         ctx.ellipse(rx, ry, 7 + rotorBlur, 3, 0, 0, Math.PI * 2);
@@ -362,12 +393,10 @@ export class CharacterRenderer {
       // ─── ENFORCER: Heavy Armored SWAT Humanoid ────────────────────────────
       const stride = Math.sin(this._time * 9) * 4;
 
-      // Heavy Armored Legs
       ctx.fillStyle = '#181824';
       ctx.fillRect(-8 + stride, -10, 8, 6);
       ctx.fillRect(-8 - stride, 4, 8, 6);
 
-      // Heavy Body Torso & Tactical Armor
       ctx.fillStyle = '#222232';
       ctx.strokeStyle = '#ffb700';
       ctx.lineWidth = 2;
@@ -376,7 +405,7 @@ export class CharacterRenderer {
       ctx.fill();
       ctx.stroke();
 
-      // Riot Shield on Left Arm
+      // Riot Shield
       ctx.fillStyle = '#10101c';
       ctx.strokeStyle = '#00f3ff';
       ctx.lineWidth = 2.5;
@@ -387,7 +416,7 @@ export class CharacterRenderer {
       ctx.fill();
       ctx.stroke();
 
-      // Shock Baton on Right Arm
+      // Shock Baton
       ctx.strokeStyle = '#ffb700';
       ctx.shadowColor = '#ffb700';
       ctx.shadowBlur = 10;
@@ -397,7 +426,6 @@ export class CharacterRenderer {
       ctx.lineTo(14, 16);
       ctx.stroke();
 
-      // Helmet & Amber Tactical Visor
       ctx.fillStyle = '#323246';
       ctx.beginPath();
       ctx.arc(2, 0, 7, 0, Math.PI * 2);
@@ -409,9 +437,8 @@ export class CharacterRenderer {
     } else if (type === 'STALKER') {
       // ─── STALKER: Slender Cyber-Ninja Humanoid ────────────────────────────
       ctx.save();
-      ctx.globalAlpha = 0.9;
+      ctx.globalAlpha = 0.92;
 
-      // Low Crouched Stance
       ctx.fillStyle = '#0e041a';
       ctx.strokeStyle = '#9900ff';
       ctx.shadowColor = '#9900ff';
@@ -426,7 +453,6 @@ export class CharacterRenderer {
       ctx.fill();
       ctx.stroke();
 
-      // Dual Reverse-Grip Ultraviolet Blades
       ctx.strokeStyle = '#d946ef';
       ctx.shadowColor = '#d946ef';
       ctx.shadowBlur = 12;
@@ -440,13 +466,11 @@ export class CharacterRenderer {
 
     } else if (type === 'SENTINEL') {
       // ─── SENTINEL: Heavy Bipedal Combat Mech ──────────────────────────────
-      // Heavy Articulated Hydraulic Legs
       const mechStep = Math.sin(this._time * 6) * 5;
       ctx.fillStyle = '#101018';
       ctx.fillRect(-16 + mechStep, -16, 12, 8);
       ctx.fillRect(-16 - mechStep, 8, 12, 8);
 
-      // Heavy Reinforced Chassis
       ctx.fillStyle = '#1a1a28';
       ctx.strokeStyle = '#ff2200';
       ctx.lineWidth = 3;
@@ -457,12 +481,10 @@ export class CharacterRenderer {
       ctx.fill();
       ctx.stroke();
 
-      // Twin Gatling Cannons
       ctx.fillStyle = '#0a0a10';
       ctx.fillRect(8, -12, 18, 5);
       ctx.fillRect(8, 7, 18, 5);
 
-      // Glowing Reactor Core
       ctx.fillStyle = '#ff2200';
       ctx.beginPath();
       ctx.arc(0, 0, 8, 0, Math.PI * 2);
@@ -496,7 +518,7 @@ export class CharacterRenderer {
     const floatY = Math.sin(this._time * 4) * 6;
     ctx.translate(0, floatY);
 
-    // 1. Telekinetic Energy Ripple Ground Shadow
+    // 1. Telekinetic Ripple Drop Shadow
     ctx.fillStyle = isHostile ? 'rgba(255, 0, 50, 0.25)' : 'rgba(255, 204, 0, 0.25)';
     ctx.beginPath();
     ctx.ellipse(0, 26, 32, 14, 0, 0, Math.PI * 2);
@@ -545,7 +567,6 @@ export class CharacterRenderer {
     ctx.closePath();
     ctx.fill();
 
-    // Main Armor Body
     ctx.fillStyle = isHostile ? '#320412' : '#f0f4ff';
     ctx.beginPath();
     ctx.arc(0, 0, 16, 0, Math.PI * 2);
@@ -554,7 +575,6 @@ export class CharacterRenderer {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Crest
     ctx.fillStyle = heroColor;
     ctx.shadowColor = heroColor;
     ctx.shadowBlur = 14;
