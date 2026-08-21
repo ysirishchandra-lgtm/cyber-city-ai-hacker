@@ -135,10 +135,16 @@ namespace Scar.UI
         public void ActivateHUD()
         {
             gameObject.SetActive(true);
-            StartCoroutine(BootSequence());
+            StartCoroutine(BootSequenceRoutine());
         }
 
-        private IEnumerator BootSequence()
+        public void BootSequence()
+        {
+            gameObject.SetActive(true);
+            StartCoroutine(BootSequenceRoutine());
+        }
+
+        private IEnumerator BootSequenceRoutine()
         {
             // Glitchy UI fade-in
             CanvasGroup cg = GetComponent<CanvasGroup>();
