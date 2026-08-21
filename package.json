@@ -1,0 +1,18 @@
+{
+  "name": "cyber-city-ai-hacker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloud-powered cyberpunk game combining AI, hacking challenges, and AWS for FRONTIER 2026.",
+  "workspaces": [
+    "game-client",
+    "web-ui",
+    "api-server"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "author": "",
+  "license": "ISC"
+}
