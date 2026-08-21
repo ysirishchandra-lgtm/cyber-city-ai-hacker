@@ -3,8 +3,16 @@
  * CharacterRenderer.js — Fluid Humanoid Combat Animations, Stride Physics & Enemy Models
  * Author: Ashwidha & Sirish (Visual / Systems Integration)
  *
- * Implements fully animated human cyberpunk protagonist wearing tactical jacket, combat pants,
- * and boots with soft contact shadow, fluid 8-way locomotion, and 3-hit combo katana strikes.
+ * Implements the customized tactical anime protagonist:
+ * - Charcoal matte-black high-collar trench coat with rich gold/brass piping
+ * - Geometric angular shoulder pads & chest harness with gold studs
+ * - Tactical utility belt with gold buckle & ammo pouches
+ * - Charcoal cargo combat pants with knee armor pads
+ * - Heavy-duty combat boots with tread detailing
+ * - Pompadour haircut, groomed beard & amber/yellow-tinted tactical sunglasses
+ * - The signature pulsing biomechanical Crimson SCAR
+ * - Energized Katana blade with fluid 3-hit combo ribbon arcs
+ * - Soft dynamic contact shadow beneath feet
  */
 
 import { POWER_PATH } from '../core/GameState.js';
@@ -30,7 +38,7 @@ export class CharacterRenderer {
     });
   }
 
-  // ─── Render Humanoid Protagonist ──────────────────────────────────────────
+  // ─── Render Tactical Anime Protagonist ────────────────────────────────────
 
   renderPlayer(ctx, player, state) {
     if (!player) return;
@@ -73,7 +81,7 @@ export class CharacterRenderer {
     const animTime = externalStrideTime !== undefined ? externalStrideTime : this._time;
     const stridePhase = externalStridePhase !== undefined ? externalStridePhase : Math.sin(animTime * strideFreq);
     const idleBreath = isMovingActual ? 0 : Math.sin(this._time * 3.5) * 1.2;
-    const coatFlutter = Math.sin(this._time * 14 + (speed * 0.05)) * (isSprinting ? 10 : (isMovingActual ? 5 : 1.5));
+    const coatFlutter = Math.sin(this._time * 14 + (speed * 0.05)) * (isSprinting ? 11 : (isMovingActual ? 6 : 1.5));
 
     // 1. Record Sprint & Dodge Blur Trails
     if ((isSprinting || isDodging) && Math.random() < 0.45) {
@@ -84,11 +92,11 @@ export class CharacterRenderer {
         life: 0.22,
         maxLife: 0.22,
         isDodging,
-        color: state?.powerUnlocked ? this._getPowerColor(state.powerPath) : 'rgba(0, 243, 255, 0.45)'
+        color: state?.powerUnlocked ? this._getPowerColor(state.powerPath) : 'rgba(212, 175, 55, 0.4)'
       });
 
       if (isDodging && Math.random() < 0.35) {
-        particleSystem.spawnDashTrail(x, y, facingAngle, '#00f3ff');
+        particleSystem.spawnDashTrail(x, y, facingAngle, '#d4af37');
       }
     }
 
@@ -101,7 +109,7 @@ export class CharacterRenderer {
       ctx.fillStyle = trail.color;
       ctx.globalAlpha = alpha;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 18, 10, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 19, 11, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -111,13 +119,13 @@ export class CharacterRenderer {
 
     // 2. Dynamic Soft Contact Ground Shadow (Accurately follows movement)
     ctx.save();
-    const shadowStretchX = 18 + (isSprinting ? 8 : (isMovingActual ? 4 : 0));
-    const shadowStretchY = 10 + (isMovingActual ? 2 : 0);
-    const shadowAlpha = isDodging ? 0.35 : 0.72;
+    const shadowStretchX = 19 + (isSprinting ? 8 : (isMovingActual ? 4 : 0));
+    const shadowStretchY = 11 + (isMovingActual ? 2 : 0);
+    const shadowAlpha = isDodging ? 0.35 : 0.75;
 
     const shadowGrad = ctx.createRadialGradient(0, 2, 2, 0, 2, shadowStretchX);
     shadowGrad.addColorStop(0, `rgba(0, 0, 0, ${shadowAlpha})`);
-    shadowGrad.addColorStop(0.5, `rgba(0, 0, 0, ${shadowAlpha * 0.5})`);
+    shadowGrad.addColorStop(0.55, `rgba(0, 0, 0, ${shadowAlpha * 0.45})`);
     shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
     ctx.fillStyle = shadowGrad;
@@ -162,154 +170,206 @@ export class CharacterRenderer {
       const rollProgress = 1 - (activeDodgeTimer / 0.35);
       const rollAngle = rollProgress * Math.PI * 2;
       ctx.rotate(rollAngle);
-      // Lift character slightly in pseudo-3D roll height
-      const rollHeight = Math.sin(rollProgress * Math.PI) * 10;
+      const rollHeight = Math.sin(rollProgress * Math.PI) * 11;
       ctx.translate(0, -rollHeight);
     }
 
-    // ─── Humanoid Body Components (Tactical Cyberpunk Protagonist) ──────────
+    // ─── Tactical Anime Protagonist Layers ───────────────────────────────────
 
     // A. Animated Combat Pants & Boots (8-Way Stride Cycle)
     ctx.save();
-    const legSwing = stridePhase * (isSprinting ? 10 : (isMovingActual ? 6.5 : 0));
+    const legSwing = stridePhase * (isSprinting ? 10.5 : (isMovingActual ? 7.0 : 0));
     const leftLegOffset = legSwing;
     const rightLegOffset = -legSwing;
 
-    // Left Cargo Leg (Combat Pants)
-    ctx.fillStyle = '#141624';
+    // Left Cargo Leg (Charcoal Combat Pants)
+    ctx.fillStyle = '#13141f';
     ctx.beginPath();
-    ctx.roundRect(-9 + leftLegOffset, -13, 11, 7, 3);
+    ctx.roundRect(-9 + leftLegOffset, -13, 11, 7.5, 3);
     ctx.fill();
-    // Left Knee Armor Plate
-    ctx.fillStyle = '#22253a';
-    ctx.fillRect(-6 + leftLegOffset, -14, 4, 3);
-    // Left Combat Boot
-    ctx.fillStyle = '#282b40';
-    ctx.fillRect(-9 + leftLegOffset + 5, -14, 6, 8);
-    // Cyan Boot Sole Tread Accent
-    ctx.fillStyle = '#00f3ff';
-    ctx.fillRect(-9 + leftLegOffset + 9, -13, 2, 6);
+    // Left Hard Knee Armor Plate
+    ctx.fillStyle = '#26293a';
+    ctx.fillRect(-6 + leftLegOffset, -14, 4.5, 3.5);
+    ctx.strokeStyle = '#d4af37'; // Gold edge highlight on knee plate
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(-6 + leftLegOffset, -14, 4.5, 3.5);
+    // Left Weathered Combat Boot
+    ctx.fillStyle = '#2b2d3d';
+    ctx.fillRect(-9 + leftLegOffset + 5, -14.5, 6.5, 8.5);
+    // Boot Tread Sole Accent
+    ctx.fillStyle = '#121218';
+    ctx.fillRect(-9 + leftLegOffset + 9.5, -14, 2, 7.5);
 
-    // Right Cargo Leg (Combat Pants)
-    ctx.fillStyle = '#141624';
+    // Right Cargo Leg (Charcoal Combat Pants)
+    ctx.fillStyle = '#13141f';
     ctx.beginPath();
-    ctx.roundRect(-9 + rightLegOffset, 6, 11, 7, 3);
+    ctx.roundRect(-9 + rightLegOffset, 5.5, 11, 7.5, 3);
     ctx.fill();
-    // Right Knee Armor Plate
-    ctx.fillStyle = '#22253a';
-    ctx.fillRect(-6 + rightLegOffset, 11, 4, 3);
-    // Right Combat Boot
-    ctx.fillStyle = '#282b40';
-    ctx.fillRect(-9 + rightLegOffset + 5, 6, 6, 8);
-    // Cyan Boot Sole Tread Accent
-    ctx.fillStyle = '#00f3ff';
-    ctx.fillRect(-9 + rightLegOffset + 9, 7, 2, 6);
+    // Right Hard Knee Armor Plate
+    ctx.fillStyle = '#26293a';
+    ctx.fillRect(-6 + rightLegOffset, 10.5, 4.5, 3.5);
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(-6 + rightLegOffset, 10.5, 4.5, 3.5);
+    // Right Weathered Combat Boot
+    ctx.fillStyle = '#2b2d3d';
+    ctx.fillRect(-9 + rightLegOffset + 5, 6, 6.5, 8.5);
+    // Boot Tread Sole Accent
+    ctx.fillStyle = '#121218';
+    ctx.fillRect(-9 + rightLegOffset + 9.5, 6.5, 2, 7.5);
     ctx.restore();
 
-    // B. Tactical Cyberpunk Trenchcoat / Jacket (Dynamic Flowing Tails)
+    // B. Charcoal Matte-Black High-Collar Trenchcoat (Flowing Tails with Gold Piping)
     ctx.save();
-    ctx.fillStyle = '#0e101c';
-    ctx.strokeStyle = '#1e2238';
-    ctx.lineWidth = 1.5;
+    ctx.fillStyle = '#12131b';
+    ctx.strokeStyle = '#d4af37'; // Gold Piping along coat borders
+    ctx.lineWidth = 1.6;
 
     ctx.beginPath();
-    ctx.moveTo(-6, -11);
-    ctx.lineTo(9, -13);
-    ctx.lineTo(13, 0);
-    ctx.lineTo(9, 13);
-    ctx.lineTo(-6, 11);
-    const coatStretch = isSprinting ? -26 : (isMovingActual ? -18 : -12);
-    ctx.quadraticCurveTo(-14, coatFlutter, coatStretch, coatFlutter * 1.5);
-    ctx.quadraticCurveTo(-14, -coatFlutter, -6, -11);
+    ctx.moveTo(-6, -11.5);
+    ctx.lineTo(9, -13.5);
+    ctx.lineTo(13.5, 0);
+    ctx.lineTo(9, 13.5);
+    ctx.lineTo(-6, 11.5);
+    const coatStretch = isSprinting ? -27 : (isMovingActual ? -19 : -13);
+    ctx.quadraticCurveTo(-15, coatFlutter, coatStretch, coatFlutter * 1.5);
+    ctx.quadraticCurveTo(-15, -coatFlutter, -6, -11.5);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    // Cyan Luminescent Seam Piping on Jacket Back
-    ctx.strokeStyle = '#00f3ff';
-    ctx.shadowColor = '#00f3ff';
+    // Gold Trim Seam Lines along Trenchcoat Back & Spine
+    ctx.strokeStyle = '#e5b839';
+    ctx.shadowColor = '#d4af37';
     ctx.shadowBlur = 6;
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.3;
     ctx.beginPath();
     ctx.moveTo(-5, -6);
-    ctx.lineTo(6, -8);
-    ctx.lineTo(6, 8);
+    ctx.lineTo(6, -8.5);
+    ctx.lineTo(6, 8.5);
     ctx.lineTo(-5, 6);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(-4, 0);
+    ctx.lineTo(8, 0);
     ctx.stroke();
     ctx.restore();
 
-    // C. Armored Torso with Tactical Rig & High Collar
+    // C. Armored Torso, High Collar & Geometric Shoulder Pads
     ctx.save();
-    // High Collar
-    ctx.fillStyle = '#22263d';
+    // Upright High Collar (Frames neck with Gold lining)
+    ctx.fillStyle = '#1a1b26';
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.roundRect(-8, -10, 6, 20, 3);
-    ctx.fill();
-
-    // Main Torso Armor Vest
-    ctx.fillStyle = '#181a2c';
-    ctx.strokeStyle = '#00f3ff';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(-7, -9 + idleBreath, 16, 18, 4);
+    ctx.roundRect(-8, -10.5, 6, 21, 3);
     ctx.fill();
     ctx.stroke();
 
-    // Tactical Chest Rig Harness
-    ctx.fillStyle = '#0c0e18';
-    ctx.fillRect(-3, -6 + idleBreath, 8, 12);
-
-    // Glowing Power Core Diode
-    ctx.fillStyle = state?.powerUnlocked ? this._getPowerColor(state.powerPath) : '#00f3ff';
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 8;
+    // Main Torso Vest (Matte-Black / Charcoal)
+    ctx.fillStyle = '#161722';
+    ctx.strokeStyle = '#282b3a';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.arc(2, 0 + idleBreath, 2.5, 0, Math.PI * 2);
+    ctx.roundRect(-7, -9 + idleBreath, 16.5, 18, 4);
     ctx.fill();
+    ctx.stroke();
+
+    // Geometric Angular Shoulder Pads (Epaulets with Gold Trim)
+    ctx.fillStyle = '#222535';
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 1.4;
+    // Left Shoulder Pad
+    ctx.beginPath();
+    ctx.moveTo(-2, -14 + idleBreath);
+    ctx.lineTo(6, -14 + idleBreath);
+    ctx.lineTo(4, -10 + idleBreath);
+    ctx.lineTo(-4, -10 + idleBreath);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Right Shoulder Pad
+    ctx.beginPath();
+    ctx.moveTo(-2, 14 + idleBreath);
+    ctx.lineTo(6, 14 + idleBreath);
+    ctx.lineTo(4, 10 + idleBreath);
+    ctx.lineTo(-4, 10 + idleBreath);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Tactical Double-Breasted Harness & Brass Buttons
+    ctx.fillStyle = '#d4af37';
+    [-4, 1, 6].forEach(px => {
+      ctx.fillRect(px, -4.5 + idleBreath, 2, 2);
+      ctx.fillRect(px, 2.5 + idleBreath, 2, 2);
+    });
+
+    // Tactical Belt & Gold Buckle
+    ctx.fillStyle = '#181920';
+    ctx.fillRect(-1, -9 + idleBreath, 4, 18);
+    // Gold Center Buckle
+    ctx.fillStyle = '#ffd700';
+    ctx.shadowColor = '#d4af37';
+    ctx.shadowBlur = 6;
+    ctx.fillRect(0, -3 + idleBreath, 3.5, 6);
+    // Utility Pouches
+    ctx.fillStyle = '#222433';
+    ctx.shadowBlur = 0;
+    ctx.fillRect(-1, -9.5 + idleBreath, 3.5, 3);
+    ctx.fillRect(-1, 6.5 + idleBreath, 3.5, 3);
     ctx.restore();
 
     // D. Left Arm & Tactical Combat Glove (Swings with Stride)
     ctx.save();
-    const armSwing = stridePhase * (isSprinting ? 7 : (isMovingActual ? 4 : 0));
-    ctx.fillStyle = '#1e2238';
+    const armSwing = stridePhase * (isSprinting ? 7.5 : (isMovingActual ? 4.5 : 0));
+    // Sleeve
+    ctx.fillStyle = '#141520';
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 1.0;
     ctx.beginPath();
     ctx.arc(2 - armSwing, -12, 4.5, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
 
-    // Forearm Armor
-    ctx.fillStyle = '#282d4a';
+    // Forearm Guard
+    ctx.fillStyle = '#242738';
     ctx.beginPath();
     ctx.roundRect(4 - armSwing, -14, 6, 4, 2);
     ctx.fill();
 
-    // Tactical Glove
-    ctx.fillStyle = '#00f3ff';
-    ctx.shadowColor = '#00f3ff';
-    ctx.shadowBlur = 6;
+    // Fingerless Tactical Glove with Gold Cuff Accent
+    ctx.fillStyle = '#181a24';
     ctx.beginPath();
-    ctx.arc(8 - armSwing, -12, 3, 0, Math.PI * 2);
+    ctx.arc(8 - armSwing, -12, 3.2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = '#d4af37';
+    ctx.fillRect(6 - armSwing, -13, 1.5, 2.5);
     ctx.restore();
 
     // E. Right Arm & Energized High-Frequency Katana Blade
     ctx.save();
-    ctx.fillStyle = '#1e2238';
+    ctx.fillStyle = '#141520';
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 1.0;
     ctx.beginPath();
     ctx.arc(2 + armSwing, 12, 4.5, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
 
     const bladeColor = state?.powerUnlocked ? this._getPowerColor(state.powerPath) : '#00f3ff';
     const bladeReach = isAttacking ? 34 : 20;
 
-    // Right Weapon Hand (Glove)
-    ctx.fillStyle = '#ffffff';
+    // Right Weapon Glove
+    ctx.fillStyle = '#181a24';
     ctx.beginPath();
     ctx.arc(8 + armSwing, 12, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Katana Tsuba (Handguard) & Hilt
-    ctx.fillStyle = '#3a3f5c';
-    ctx.fillRect(7 + armSwing, 10, 3, 4);
+    // Katana Tsuba (Gold Handguard) & Hilt
+    ctx.fillStyle = '#d4af37';
+    ctx.fillRect(7 + armSwing, 9.5, 3.5, 5);
 
     // Glowing Katana Blade
     ctx.strokeStyle = bladeColor;
@@ -317,49 +377,71 @@ export class CharacterRenderer {
     ctx.shadowBlur = isAttacking ? 24 : 10;
     ctx.lineWidth = isAttacking ? 4.5 : 2.5;
     ctx.beginPath();
-    ctx.moveTo(9 + armSwing, 12);
-    ctx.lineTo(9 + armSwing + bladeReach, 12);
+    ctx.moveTo(9.5 + armSwing, 12);
+    ctx.lineTo(9.5 + armSwing + bladeReach, 12);
     ctx.stroke();
 
     // Blade Center White Core
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(9 + armSwing, 12);
-    ctx.lineTo(9 + armSwing + bladeReach * 0.9, 12);
+    ctx.moveTo(9.5 + armSwing, 12);
+    ctx.lineTo(9.5 + armSwing + bladeReach * 0.9, 12);
     ctx.stroke();
     ctx.restore();
 
-    // F. Head, Cyber Hair, Visor & The Signature Crimson SCAR
+    // F. Head, Pompadour Hair, Groomed Beard & Amber Sunglasses
     ctx.save();
-    // Head base
-    ctx.fillStyle = '#2c304e';
+    // Head Base (Skin Tone & Jaw)
+    ctx.fillStyle = '#d89b78';
     ctx.beginPath();
-    ctx.arc(4, 0, 8, 0, Math.PI * 2);
+    ctx.arc(4, 0, 7.8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Dark Spiky Cyberpunk Hair
-    ctx.fillStyle = '#121422';
+    // Groomed Beard & Mustache framing jawline
+    ctx.fillStyle = '#1a1820';
     ctx.beginPath();
-    ctx.moveTo(-2, -7);
-    ctx.lineTo(2, -9);
-    ctx.lineTo(5, -6);
-    ctx.lineTo(7, -8);
-    ctx.lineTo(8, 0);
-    ctx.lineTo(7, 8);
-    ctx.lineTo(5, 6);
-    ctx.lineTo(2, 9);
-    ctx.lineTo(-2, 7);
+    ctx.arc(4.5, 0, 8.2, -Math.PI * 0.35, Math.PI * 0.35);
+    ctx.lineTo(4.5, 0);
     ctx.closePath();
     ctx.fill();
 
-    // Glowing Cyan Ocular Visor
-    ctx.fillStyle = '#00f3ff';
-    ctx.shadowColor = '#00f3ff';
-    ctx.shadowBlur = 10;
-    ctx.fillRect(7, -3.5, 4, 7);
+    // Pompadour Hairstyle (Voluminous Dark Swept-Back Hair)
+    ctx.fillStyle = '#101118';
+    ctx.beginPath();
+    ctx.moveTo(-3, -7.5);
+    ctx.quadraticCurveTo(1, -11, 6, -8);
+    ctx.quadraticCurveTo(10, -5, 9, 0);
+    ctx.quadraticCurveTo(10, 5, 6, 8);
+    ctx.quadraticCurveTo(1, 11, -3, 7.5);
+    ctx.quadraticCurveTo(-4, 0, -3, -7.5);
+    ctx.closePath();
+    ctx.fill();
 
-    // 5. THE SCAR: A deep, pulsing crimson energy wound across the right eye/face
+    // Hair Top Pompadour Quiff Highlight
+    ctx.strokeStyle = '#2b2c3a';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, -6);
+    ctx.lineTo(7, -3);
+    ctx.moveTo(0, 6);
+    ctx.lineTo(7, 3);
+    ctx.stroke();
+
+    // Amber / Yellow-Tinted Tactical Sunglasses
+    ctx.fillStyle = '#ffb700'; // Amber/Golden-Yellow Tint
+    ctx.shadowColor = '#ffb700';
+    ctx.shadowBlur = 10;
+    ctx.fillRect(7, -3.5, 4.5, 7);
+
+    // Sunglasses Dark Metal Frame & Center Bridge
+    ctx.strokeStyle = '#121218';
+    ctx.lineWidth = 1.0;
+    ctx.strokeRect(7, -3.5, 4.5, 7);
+    ctx.fillStyle = '#0a0a0f';
+    ctx.fillRect(6.5, -0.8, 2, 1.6);
+
+    // The Signature Glowing Crimson SCAR
     if (state && (state.hasScar || state.powerUnlocked || true)) {
       ctx.save();
       const scarPulse = Math.sin(this._time * 8) * 0.35 + 0.65;
