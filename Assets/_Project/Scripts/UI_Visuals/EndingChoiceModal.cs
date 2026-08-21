@@ -92,8 +92,15 @@ namespace Scar.UI_Visuals
             _btnTakeControl.interactable = false;
             _btnBecome.interactable = false;
 
-            // Trigger the respective ending cinematic or backend save
-            // GameManager.Instance.TriggerEnding(choiceID);
+            // Trigger the respective ending cinematic or backend save via Narrative Controller
+            if (Scar.Core.EndingNarrativeController.Instance != null)
+            {
+                Scar.Core.EndingNarrativeController.Instance.ProcessEndingChoice(choiceID);
+            }
+            else
+            {
+                Debug.LogWarning("[EndingChoiceModal] EndingNarrativeController not found. Mocking choice processing.");
+            }
             
             StartCoroutine(FadeOutToBlack());
         }
