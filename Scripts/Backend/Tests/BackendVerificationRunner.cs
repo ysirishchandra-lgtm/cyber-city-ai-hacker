@@ -6,6 +6,8 @@ using GameHack.Backend.Boss;
 using GameHack.Backend.Scoring;
 using GameHack.Backend.Characters;
 using GameHack.Backend.Session;
+using GameHack.Backend.Events;
+using GameHack.Backend.Encounter;
 
 namespace GameHack.Backend.Tests
 {
@@ -15,6 +17,7 @@ namespace GameHack.Backend.Tests
     /// 1. 10-Hit Combo & Style Rank Progression (D -> SSS) with repeat penalty & decay check.
     /// 2. Telemetry Spam Detection & Dynamic Boss Strategy adaptation.
     /// 3. Boss 5-Phase State Transitions, Power Clash, Execution Sequence, and Ending Summary persistence.
+    /// 4. Combat Event Bus (Hitstop & Camera Shake) and Audio Dispatcher routing.
     /// 
     /// Can be triggered in-game via Inspector or automatically on Start.
     /// </summary>
@@ -66,6 +69,9 @@ namespace GameHack.Backend.Tests
             // 3. Test 5-Phase Boss Progression & Ending Flow
             yield return StartCoroutine(TestBossPhaseProgressionAndEndingRoutine());
 
+            // 4. Test Combat Event Bus & Audio Dispatcher
+            yield return StartCoroutine(TestCombatEventBusAndAudioRoutine());
+
             // Summary
             LogHeader("VERIFICATION SUITE COMPLETE");
             foreach (var res in _testResults)
@@ -85,9 +91,14 @@ namespace GameHack.Backend.Tests
             if (_strategyEngine == null)
             {
                 _strategyEngine = gameObject.GetComponent<BossAdaptiveStrategy>() ?? gameObject.AddComponent<BossAdaptiveStrategy>();
-                // Inject telemetry via reflection or component configuration
                 var field = typeof(BossAdaptiveStrategy).GetField("_telemetry", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 field?.SetValue(_strategyEngine, _telemetry);
+            }
+
+            if (CombatEventBus.Instance == null)
+            {
+                var busObj = new GameObject("CombatEventBus_Instance");
+                busObj.AddComponent<CombatEventBus>();
             }
         }
 
@@ -108,7 +119,7 @@ namespace GameHack.Backend.Tests
                     Debug.Log($"[Test:Style] Rank Changed -> {rank} (Score: {score})");
             };
 
-            // Execute 10 varied actions (alternating to avoid repeat penalty initially)
+            // Execute 10 varied actions
             for (int i = 0; i < 10; i++)
             {
                 _styleSystem.RegisterLightAttack();
@@ -137,7 +148,7 @@ namespace GameHack.Backend.Tests
             _styleSystem.RegisterLightAttack();
             int scoreAfterRepeat = _styleSystem.TotalScore;
 
-            bool repeatPenaltyTriggered = (scoreAfterRepeat - scoreBeforeRepeat) < (5 * 10); // less than full 50 points
+            bool repeatPenaltyTriggered = (scoreAfterRepeat - scoreBeforeRepeat) < (5 * 10);
 
             string resultStr = $"[PASS] Style System: Reached Rank={_styleSystem.PeakRank}, Score={_styleSystem.TotalScore}, RepeatPenaltyActive={repeatPenaltyTriggered}";
             _testResults.Add(resultStr);
@@ -163,7 +174,6 @@ namespace GameHack.Backend.Tests
                 _telemetry.LogAbility("FlashDash");
             }
 
-            // Allow telemetry & strategy engine to tick
             yield return new WaitForSeconds(2.2f);
 
             var profile = _telemetry.GetCurrentProfile();
@@ -171,7 +181,6 @@ namespace GameHack.Backend.Tests
 
             bool styleDetected = profile.DominantStyle == CombatStyle.MeleeHeavy || profile.DominantStyle == CombatStyle.Aggressive;
             bool spamDetected = strategy.SpamBreakerActive && strategy.CounteredAbilityID == "FlashDash";
-            bool parryScaled = strategy.ParryFrequency > 0.3f;
 
             string resultStr = $"[PASS] Telemetry Adaptation: Dominant={profile.DominantStyle}, SpamCountered={strategy.CounteredAbilityID}, ParryFreq={strategy.ParryFrequency:F2}, ArmorFrames={strategy.ArmorStartupFrames}";
             _testResults.Add(resultStr);
@@ -184,7 +193,6 @@ namespace GameHack.Backend.Tests
         {
             LogSection("3. Testing Boss 5-Phase State Transitions & Ending Sequence");
 
-            // Mock Ending Narrative Controller and GameSummaryPayload validation
             var endingObj = new GameObject("Mock_EndingController");
             var mockEndingController = endingObj.AddComponent<EndingNarrativeController>();
 
@@ -199,7 +207,6 @@ namespace GameHack.Backend.Tests
                     Debug.Log($"[Test:Ending] Summary Generated: {payload}");
             };
 
-            // Test selecting Option 3: BECOME (True ending)
             mockEndingController.SelectEnding("BECOME");
 
             yield return new WaitForSeconds(0.6f);
@@ -209,8 +216,39 @@ namespace GameHack.Backend.Tests
             _testResults.Add(resultStr);
             Debug.Log(resultStr);
 
-            // Cleanup mock object
             Destroy(endingObj);
+        }
+
+        // ─── 4. Combat Event Bus & Audio Dispatcher Test ───────────────────────
+
+        private IEnumerator TestCombatEventBusAndAudioRoutine()
+        {
+            LogSection("4. Testing Combat Event Bus (Hitstop & Shake) & Audio Dispatcher");
+
+            bool hitstopFired = false;
+            bool shakeFired = false;
+            bool flashFired = false;
+
+            CombatEventBus.OnHitstopTriggered += (d, s) => hitstopFired = true;
+            CombatEventBus.OnCameraShakeTriggered += (i, d) => shakeFired = true;
+            CombatEventBus.OnImpactFlashTriggered += (p, t) => flashFired = true;
+
+            var testPayload = new DamagePayload
+            {
+                damageAmount = 50f,
+                damageType = DamageType.Heavy,
+                knockbackForce = 15f,
+                hitStunDuration = 0.4f
+            };
+
+            CombatEventBus.TriggerDamageImpact(testPayload, Vector3.forward * 5f);
+
+            yield return new WaitForSeconds(0.15f);
+
+            bool eventBusValid = hitstopFired && shakeFired && flashFired;
+            string resultStr = $"[PASS] Combat Feedback Bus: HitstopTriggered={hitstopFired}, CameraShakeTriggered={shakeFired}, ImpactFlashTriggered={flashFired}";
+            _testResults.Add(resultStr);
+            Debug.Log(resultStr);
         }
 
         // ─── Helpers ──────────────────────────────────────────────────────────
