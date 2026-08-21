@@ -77,12 +77,12 @@ namespace Scar.UI
         {
             if (_endingPanel != null) _endingPanel.SetActive(true);
 
-            string endingUpper = endingId.ToUpper();
+            string endingUpper = endingId != null ? endingId.ToUpper() : "UNKNOWN";
             Color themeColor = GetEndingColor(endingUpper);
 
             if (_endingTitleText != null)
             {
-                _endingTitleText.text = $"WHO DID YOU BECOME? // THE {endingUpper}";
+                _endingTitleText.text = "WHO DID YOU BECOME? // THE " + endingUpper;
                 _endingTitleText.color = themeColor;
             }
 
@@ -105,16 +105,16 @@ namespace Scar.UI
             if (GameManager.Instance != null && GameManager.Instance.State != null)
             {
                 var state = GameManager.Instance.State;
-                if (_playerNameText != null) _playerNameText.text = $"OPERATIVE: {state.PlayerName.ToUpper()}";
-                if (_finalScoreText != null) _finalScoreText.text = $"FINAL SCORE: {finalScore:N0}";
-                if (_enemiesDefeatedText != null) _enemiesDefeatedText.text = $"ELIMINATIONS: {state.EnemiesDefeated}";
-                if (_missionsCompletedText != null) _missionsCompletedText.text = $"SECTORS CLEARED: {state.MissionsCompleted}";
-                if (_choicesMadeText != null) _choicesMadeText.text = $"CRITICAL CHOICES: {state.ChoicesMade}";
-                if (_powerPathText != null) _powerPathText.text = $"POWER PATH: {state.PowerPath}";
+                if (_playerNameText != null) _playerNameText.text = "OPERATIVE: " + state.PlayerName.ToUpper();
+                if (_finalScoreText != null) _finalScoreText.text = "FINAL SCORE: " + finalScore;
+                if (_enemiesDefeatedText != null) _enemiesDefeatedText.text = "ELIMINATIONS: " + state.EnemiesDefeated;
+                if (_missionsCompletedText != null) _missionsCompletedText.text = "SECTORS CLEARED: " + state.MissionsCompleted;
+                if (_choicesMadeText != null) _choicesMadeText.text = "CRITICAL CHOICES: " + state.ChoicesMade;
+                if (_powerPathText != null) _powerPathText.text = "POWER PATH: " + state.PowerPath;
             }
             else
             {
-                if (_finalScoreText != null) _finalScoreText.text = $"FINAL SCORE: {finalScore:N0}";
+                if (_finalScoreText != null) _finalScoreText.text = "FINAL SCORE: " + finalScore;
             }
         }
 

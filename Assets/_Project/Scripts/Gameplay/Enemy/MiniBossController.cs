@@ -25,16 +25,18 @@ namespace Scar.Gameplay.Enemy
         private float _attackTimer = 0f;
         private bool _isDead = false;
 
-        public bool IsPhase2 => _isPhase2;
+        public bool IsPhase2 { get { return _isPhase2; } }
 
         private void Awake()
         {
             _agent = GetComponent<NavMeshAgent>();
             _health = GetComponent<HealthComponent>();
-            _health.Initialize(maxHealth);
-
-            _health.OnHealthChanged += HandleHealthChanged;
-            _health.OnDeath += HandleDeath;
+            if (_health != null)
+            {
+                _health.Initialize(maxHealth);
+                _health.OnHealthChanged += HandleHealthChanged;
+                _health.OnDeath += HandleDeath;
+            }
         }
 
         private void Start()
@@ -56,7 +58,7 @@ namespace Scar.Gameplay.Enemy
 
             if (dist <= attackRange)
             {
-                _agent.isStopped = true;
+                if (_agent != null) _agent.isStopped = true;
                 if (_attackTimer <= 0f)
                 {
                     ExecuteBossAttack();
@@ -65,19 +67,22 @@ namespace Scar.Gameplay.Enemy
             }
             else
             {
-                _agent.isStopped = false;
-                _agent.speed = _isPhase2 ? 7.0f : 5.0f;
-                _agent.SetDestination(_playerTransform.position);
+                if (_agent != null)
+                {
+                    _agent.isStopped = false;
+                    _agent.SetDestination(_playerTransform.position);
+                }
             }
         }
 
         private void HandleHealthChanged(float current, float max)
         {
+            if (max <= 0f) return;
             float pct = current / max;
             if (pct <= 0.5f && !_isPhase2)
             {
                 _isPhase2 = true;
-                EventBus.Instance.Publish("BOSS_PHASE2_ENTERED", new { bossId = gameObject.name });
+                EventBus.Publish("BOSS_PHASE2_ENTERED", gameObject.name);
             }
         }
 
@@ -86,15 +91,15 @@ namespace Scar.Gameplay.Enemy
             if (bossHitbox != null)
             {
                 bossHitbox.EnableHitbox();
-                Invoke(nameof(DisableHitbox), 0.4f);
+                Invoke("DisableHitbox", 0.4f);
             }
-            else
+            else if (_playerTransform != null)
             {
                 var hurtbox = _playerTransform.GetComponentInChildren<Hurtbox>();
                 if (hurtbox != null)
                 {
                     float dmg = _isPhase2 ? phase2Damage : phase1Damage;
-                    hurtbox.ReceiveDamage(new DamageData(dmg, DamageType.MELEE, gameObject));
+                    hurtbox.ReceiveDamage(new DamageData(dmg, DamageType.MELEE, gameObject, Vector3.zero));
                 }
             }
         }
@@ -108,14 +113,23 @@ namespace Scar.Gameplay.Enemy
         {
             if (_isDead) return;
             _isDead = true;
-            _agent.isStopped = true;
-            _agent.enabled = false;
-
-            EventBus.Instance.Publish(GameEvents.BOSS_DEFEATED, new
+            if (_agent != null)
             {
-                bossId = "MINI_BOSS_ELITE",
-                name = "Elite Cyber Enforcer"
-            });
+                _agent.isStopped = true;
+                _agent.enabled = false;
+            }
+
+            var bossDefeatedEvent = new GameEvents.BossDefeatedEvent();
+            bossDefeatedEvent.BossId = "MINI_BOSS_ELITE";
+            bossDefeatedEvent.BattleDuration = 15f;
+            EventBus.Publish(bossDefeatedEvent);
+
+            EventBus.Publish(GameEvents.BOSS_DEFEATED, "MINI_BOSS_ELITE");
+
+            if (GameManager.Instance != null && GameManager.Instance.State != null)
+            {
+                GameManager.Instance.State.RecordEnemyDefeated("MINI_BOSS_ELITE", "MiniBoss", 500);
+            }
 
             Destroy(gameObject, 3.0f);
         }

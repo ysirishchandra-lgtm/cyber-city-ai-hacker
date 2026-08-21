@@ -18,9 +18,9 @@ namespace Scar.Gameplay.Player
         private Vector3 _dodgeDirection;
         private float _currentStamina;
 
-        public bool IsDodging => _isDodging;
-        public bool IsSprinting => _isSprinting && _moveInput.sqrMagnitude > 0.1f;
-        public float CurrentStamina => _currentStamina;
+        public bool IsDodging { get { return _isDodging; } }
+        public bool IsSprinting { get { return _isSprinting && _moveInput.sqrMagnitude > 0.1f; } }
+        public float CurrentStamina { get { return _currentStamina; } }
 
         private void Awake()
         {
@@ -33,7 +33,7 @@ namespace Scar.Gameplay.Player
             {
                 stats = ScriptableObject.CreateInstance<PlayerStats>();
             }
-            _currentStamina = stats.maxStamina;
+            _currentStamina = stats != null ? stats.maxStamina : 100f;
         }
 
         private void Update()
@@ -55,6 +55,7 @@ namespace Scar.Gameplay.Player
 
         public bool TryDodge()
         {
+            if (stats == null) return false;
             if (_isDodging || _currentStamina < stats.dodgeStaminaCost) return false;
 
             _isDodging = true;
@@ -68,6 +69,8 @@ namespace Scar.Gameplay.Player
 
         private void HandleMovement()
         {
+            if (stats == null || _characterController == null) return;
+
             if (_isDodging)
             {
                 _characterController.Move(_dodgeDirection * (stats.dodgeSpeed * Time.deltaTime));
@@ -124,6 +127,7 @@ namespace Scar.Gameplay.Player
 
         private void HandleStaminaRegen()
         {
+            if (stats == null) return;
             if (!_isSprinting && !_isDodging)
             {
                 _currentStamina = Mathf.Min(stats.maxStamina, _currentStamina + stats.staminaRegenRate * Time.deltaTime);

@@ -8,36 +8,40 @@ namespace Scar.Gameplay.Abilities
 {
     public class DestructionNovaAbility : IPowerAbility
     {
-        public string AbilityId => "DESTRUCTION_NOVA";
-        public string AbilityName => "Destruction Nova";
-        public string PowerPath => "AGGRESSIVE";
-        public float CooldownDuration => 5.0f;
+        public string AbilityId { get { return "DESTRUCTION_NOVA"; } }
+        public string AbilityName { get { return "Destruction Nova"; } }
+        public string PowerPath { get { return "AGGRESSIVE"; } }
+        public float CooldownDuration { get { return 5.0f; } }
         public float RemainingCooldown { get; private set; }
-        public bool IsReady => RemainingCooldown <= 0f;
+        public bool IsReady { get { return RemainingCooldown <= 0f; } }
 
         private readonly GameObject _caster;
 
         public DestructionNovaAbility(GameObject caster)
         {
             _caster = caster;
+            RemainingCooldown = 0f;
         }
 
-        public bool CanActivate() => IsReady && _caster != null;
+        public bool CanActivate() { return IsReady && _caster != null; }
 
         public void Activate()
         {
             if (!CanActivate()) return;
             RemainingCooldown = CooldownDuration;
 
-            Collider[] hits = Physics.OverlapSphere(_caster.transform.position, 6.0f);
-            foreach (var hit in hits)
+            if (_caster != null && _caster.transform != null)
             {
-                if (hit.gameObject == _caster) continue;
-                var hurtbox = hit.GetComponent<Hurtbox>();
-                if (hurtbox != null)
+                Collider[] hits = Physics.OverlapSphere(_caster.transform.position, 6.0f);
+                for (int i = 0; i < hits.Length; i++)
                 {
-                    Vector3 push = (hit.transform.position - _caster.transform.position).normalized * 10f;
-                    hurtbox.ReceiveDamage(new DamageData(75f, DamageType.POWER_DESTRUCTION, _caster, push));
+                    if (hits[i].gameObject == _caster) continue;
+                    var hurtbox = hits[i].GetComponent<Hurtbox>();
+                    if (hurtbox != null)
+                    {
+                        Vector3 push = (hits[i].transform.position - _caster.transform.position).normalized * 10f;
+                        hurtbox.ReceiveDamage(new DamageData(75f, DamageType.POWER_DESTRUCTION, _caster, push));
+                    }
                 }
             }
         }
@@ -50,35 +54,39 @@ namespace Scar.Gameplay.Abilities
 
     public class KineticBarrierAbility : IPowerAbility
     {
-        public string AbilityId => "KINETIC_BARRIER";
-        public string AbilityName => "Kinetic Barrier";
-        public string PowerPath => "PROTECTIVE";
-        public float CooldownDuration => 6.0f;
+        public string AbilityId { get { return "KINETIC_BARRIER"; } }
+        public string AbilityName { get { return "Kinetic Barrier"; } }
+        public string PowerPath { get { return "PROTECTIVE"; } }
+        public float CooldownDuration { get { return 6.0f; } }
         public float RemainingCooldown { get; private set; }
-        public bool IsReady => RemainingCooldown <= 0f;
+        public bool IsReady { get { return RemainingCooldown <= 0f; } }
 
         private readonly GameObject _caster;
 
         public KineticBarrierAbility(GameObject caster)
         {
             _caster = caster;
+            RemainingCooldown = 0f;
         }
 
-        public bool CanActivate() => IsReady && _caster != null;
+        public bool CanActivate() { return IsReady && _caster != null; }
 
         public void Activate()
         {
             if (!CanActivate()) return;
             RemainingCooldown = CooldownDuration;
 
-            var hurtbox = _caster.GetComponentInChildren<Hurtbox>();
-            if (hurtbox != null)
+            if (_caster != null)
             {
-                hurtbox.SetInvulnerable(true);
-                var runner = _caster.GetComponent<AbilityManager>();
-                if (runner != null)
+                var hurtbox = _caster.GetComponentInChildren<Hurtbox>();
+                if (hurtbox != null)
                 {
-                    runner.InvokeDisableInvulnerability(hurtbox, 3.5f);
+                    hurtbox.SetInvulnerable(true);
+                    var runner = _caster.GetComponent<AbilityManager>();
+                    if (runner != null)
+                    {
+                        runner.InvokeDisableInvulnerability(hurtbox, 3.5f);
+                    }
                 }
             }
         }
@@ -91,39 +99,43 @@ namespace Scar.Gameplay.Abilities
 
     public class StasisHackAbility : IPowerAbility
     {
-        public string AbilityId => "STASIS_HACK";
-        public string AbilityName => "Stasis Hack";
-        public string PowerPath => "STRATEGIC";
-        public float CooldownDuration => 7.0f;
+        public string AbilityId { get { return "STASIS_HACK"; } }
+        public string AbilityName { get { return "Stasis Hack"; } }
+        public string PowerPath { get { return "STRATEGIC"; } }
+        public float CooldownDuration { get { return 7.0f; } }
         public float RemainingCooldown { get; private set; }
-        public bool IsReady => RemainingCooldown <= 0f;
+        public bool IsReady { get { return RemainingCooldown <= 0f; } }
 
         private readonly GameObject _caster;
 
         public StasisHackAbility(GameObject caster)
         {
             _caster = caster;
+            RemainingCooldown = 0f;
         }
 
-        public bool CanActivate() => IsReady && _caster != null;
+        public bool CanActivate() { return IsReady && _caster != null; }
 
         public void Activate()
         {
             if (!CanActivate()) return;
             RemainingCooldown = CooldownDuration;
 
-            Collider[] hits = Physics.OverlapSphere(_caster.transform.position, 8.0f);
-            foreach (var hit in hits)
+            if (_caster != null && _caster.transform != null)
             {
-                if (hit.gameObject == _caster) continue;
-                var agent = hit.GetComponent<UnityEngine.AI.NavMeshAgent>();
-                if (agent != null)
+                Collider[] hits = Physics.OverlapSphere(_caster.transform.position, 8.0f);
+                for (int i = 0; i < hits.Length; i++)
                 {
-                    agent.isStopped = true;
-                    var runner = _caster.GetComponent<AbilityManager>();
-                    if (runner != null)
+                    if (hits[i].gameObject == _caster) continue;
+                    var agent = hits[i].GetComponent<UnityEngine.AI.NavMeshAgent>();
+                    if (agent != null)
                     {
-                        runner.InvokeUnfreezeAgent(agent, 4.0f);
+                        agent.isStopped = true;
+                        var runner = _caster.GetComponent<AbilityManager>();
+                        if (runner != null)
+                        {
+                            runner.InvokeUnfreezeAgent(agent, 4.0f);
+                        }
                     }
                 }
             }
@@ -138,18 +150,25 @@ namespace Scar.Gameplay.Abilities
     public class AbilityManager : MonoBehaviour
     {
         private IPowerAbility _equippedAbility = null;
-        public bool HasPower => _equippedAbility != null;
-        public IPowerAbility EquippedAbility => _equippedAbility;
+        public bool HasPower { get { return _equippedAbility != null; } }
+        public IPowerAbility EquippedAbility { get { return _equippedAbility; } }
 
         private void Update()
         {
-            if (_equippedAbility is DestructionNovaAbility dn) dn.UpdateCooldown(Time.deltaTime);
-            else if (_equippedAbility is KineticBarrierAbility kb) kb.UpdateCooldown(Time.deltaTime);
-            else if (_equippedAbility is StasisHackAbility sh) sh.UpdateCooldown(Time.deltaTime);
+            var dn = _equippedAbility as DestructionNovaAbility;
+            if (dn != null) { dn.UpdateCooldown(Time.deltaTime); return; }
+
+            var kb = _equippedAbility as KineticBarrierAbility;
+            if (kb != null) { kb.UpdateCooldown(Time.deltaTime); return; }
+
+            var sh = _equippedAbility as StasisHackAbility;
+            if (sh != null) { sh.UpdateCooldown(Time.deltaTime); return; }
         }
 
         public void UnlockAbility(string powerPath)
         {
+            if (string.IsNullOrEmpty(powerPath)) return;
+
             switch (powerPath.ToUpper())
             {
                 case "DESTRUCTION":

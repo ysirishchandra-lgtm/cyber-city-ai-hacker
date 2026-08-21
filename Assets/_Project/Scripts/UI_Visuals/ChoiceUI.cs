@@ -43,7 +43,7 @@ namespace Scar.UI
         private string[] _activeOptionIds = new string[3];
         private bool _isAwaitingInput = false;
 
-        public bool IsActive => _choicePanel != null && _choicePanel.activeSelf;
+        public bool IsActive { get { return _choicePanel != null && _choicePanel.activeSelf; } }
 
         private void OnEnable()
         {
@@ -83,22 +83,25 @@ namespace Scar.UI
 
         private void SetupButtonListeners()
         {
+            if (_choiceCards == null) return;
             for (int i = 0; i < _choiceCards.Length; i++)
             {
+                if (_choiceCards[i] == null) continue;
                 int index = i;
                 if (_choiceCards[i].ActionButton != null)
                 {
                     _choiceCards[i].ActionButton.onClick.RemoveAllListeners();
-                    _choiceCards[i].ActionButton.onClick.AddListener(() => SelectOption(index));
+                    _choiceCards[i].ActionButton.onClick.AddListener(delegate { SelectOption(index); });
                 }
             }
         }
 
         private void RemoveButtonListeners()
         {
+            if (_choiceCards == null) return;
             for (int i = 0; i < _choiceCards.Length; i++)
             {
-                if (_choiceCards[i].ActionButton != null)
+                if (_choiceCards[i] != null && _choiceCards[i].ActionButton != null)
                 {
                     _choiceCards[i].ActionButton.onClick.RemoveAllListeners();
                 }
@@ -114,24 +117,28 @@ namespace Scar.UI
 
             _activeOptionIds = new string[3];
 
-            for (int i = 0; i < _choiceCards.Length; i++)
+            if (_choiceCards != null)
             {
-                if (i < e.OptionDescriptions.Length && !string.IsNullOrEmpty(e.OptionDescriptions[i]))
+                for (int i = 0; i < _choiceCards.Length; i++)
                 {
-                    _choiceCards[i].Container.SetActive(true);
-                    if (_choiceCards[i].NumberKeyText != null) _choiceCards[i].NumberKeyText.text = $"[{i + 1}]";
-                    if (_choiceCards[i].TitleText != null) _choiceCards[i].TitleText.text = GetOptionHeading(i, e.ChoiceId);
-                    if (_choiceCards[i].DescriptionText != null) _choiceCards[i].DescriptionText.text = e.OptionDescriptions[i];
+                    if (_choiceCards[i] == null) continue;
+                    if (e.OptionDescriptions != null && i < e.OptionDescriptions.Length && !string.IsNullOrEmpty(e.OptionDescriptions[i]))
+                    {
+                        if (_choiceCards[i].Container != null) _choiceCards[i].Container.SetActive(true);
+                        if (_choiceCards[i].NumberKeyText != null) _choiceCards[i].NumberKeyText.text = "[" + (i + 1) + "]";
+                        if (_choiceCards[i].TitleText != null) _choiceCards[i].TitleText.text = GetOptionHeading(i, e.ChoiceId);
+                        if (_choiceCards[i].DescriptionText != null) _choiceCards[i].DescriptionText.text = e.OptionDescriptions[i];
 
-                    Color cardColor = GetOptionColor(i, e.ChoiceId);
-                    if (_choiceCards[i].BorderGlow != null) _choiceCards[i].BorderGlow.color = cardColor;
-                    if (_choiceCards[i].TitleText != null) _choiceCards[i].TitleText.color = cardColor;
+                        Color cardColor = GetOptionColor(i, e.ChoiceId);
+                        if (_choiceCards[i].BorderGlow != null) _choiceCards[i].BorderGlow.color = cardColor;
+                        if (_choiceCards[i].TitleText != null) _choiceCards[i].TitleText.color = cardColor;
 
-                    _activeOptionIds[i] = $"OPT_{e.ChoiceId}_{i + 1}";
-                }
-                else
-                {
-                    _choiceCards[i].Container.SetActive(false);
+                        _activeOptionIds[i] = "OPT_" + e.ChoiceId + "_" + (i + 1);
+                    }
+                    else
+                    {
+                        if (_choiceCards[i].Container != null) _choiceCards[i].Container.SetActive(false);
+                    }
                 }
             }
 
@@ -141,16 +148,14 @@ namespace Scar.UI
 
         public void PresentPowerAwakening()
         {
-            var powerEvent = new GameEvents.ChoicePresentedEvent
+            var powerEvent = new GameEvents.ChoicePresentedEvent();
+            powerEvent.ChoiceId = "CHOICE_POWER_AWAKENING";
+            powerEvent.Title = "SURGE DETECTED // AWAKEN YOUR POWER";
+            powerEvent.OptionDescriptions = new string[]
             {
-                ChoiceId = "CHOICE_POWER_AWAKENING",
-                Title = "SURGE DETECTED // AWAKEN YOUR POWER",
-                OptionDescriptions = new string[]
-                {
-                    "DESTRUCTION — Unleash raw offensive kinetic shockwaves. Obliterate hostiles without hesitation.",
-                    "PROTECTION — Manifest impenetrable kinetic barriers. Shield yourself and innocent lives.",
-                    "CONTROL — Harness quantum stasis fields. Hack enemy systems and manipulate the battlefield."
-                }
+                "DESTRUCTION — Unleash raw offensive kinetic shockwaves. Obliterate hostiles without hesitation.",
+                "PROTECTION — Manifest impenetrable kinetic barriers. Shield yourself and innocent lives.",
+                "CONTROL — Harness quantum stasis fields. Hack enemy systems and manipulate the battlefield."
             };
 
             OnChoicePresented(powerEvent);
@@ -161,7 +166,9 @@ namespace Scar.UI
             if (!_isAwaitingInput || optionIndex < 0 || optionIndex >= _choiceCards.Length) return;
 
             _isAwaitingInput = false;
-            string selectedOpt = _activeOptionIds[optionIndex] ?? $"OPT_{_activeChoiceId}_{optionIndex + 1}";
+            string selectedOpt = _activeOptionIds != null && _activeOptionIds.Length > optionIndex && _activeOptionIds[optionIndex] != null 
+                ? _activeOptionIds[optionIndex] 
+                : "OPT_" + _activeChoiceId + "_" + (optionIndex + 1);
 
             // Determine power/moral alignment impacts
             float revenge = 0f;
@@ -173,17 +180,20 @@ namespace Scar.UI
             {
                 if (optionIndex == 0)
                 {
-                    GameManager.Instance?.State?.UnlockPower("AGGRESSIVE", "DESTRUCTION NOVA");
+                    if (GameManager.Instance != null && GameManager.Instance.State != null)
+                        GameManager.Instance.State.UnlockPower("AGGRESSIVE", "DESTRUCTION NOVA");
                     revenge += 25f;
                 }
                 else if (optionIndex == 1)
                 {
-                    GameManager.Instance?.State?.UnlockPower("PROTECTIVE", "KINETIC BARRIER");
+                    if (GameManager.Instance != null && GameManager.Instance.State != null)
+                        GameManager.Instance.State.UnlockPower("PROTECTIVE", "KINETIC BARRIER");
                     humanity += 25f;
                 }
                 else
                 {
-                    GameManager.Instance?.State?.UnlockPower("STRATEGIC", "CHRONO STASIS");
+                    if (GameManager.Instance != null && GameManager.Instance.State != null)
+                        GameManager.Instance.State.UnlockPower("STRATEGIC", "CHRONO STASIS");
                     control += 25f;
                 }
             }
@@ -195,12 +205,10 @@ namespace Scar.UI
             }
             else
             {
-                var choiceEvent = new GameEvents.ChoiceSelectedEvent
-                {
-                    ChoiceId = _activeChoiceId,
-                    SelectedOptionId = selectedOpt,
-                    ChoiceIndex = optionIndex
-                };
+                var choiceEvent = new GameEvents.ChoiceSelectedEvent();
+                choiceEvent.ChoiceId = _activeChoiceId;
+                choiceEvent.SelectedOptionId = selectedOpt;
+                choiceEvent.ChoiceIndex = optionIndex;
                 EventBus.Publish(choiceEvent);
             }
 
@@ -209,7 +217,7 @@ namespace Scar.UI
 
         private string GetOptionHeading(int index, string choiceId)
         {
-            if (choiceId.Contains("POWER"))
+            if (choiceId != null && choiceId.Contains("POWER"))
             {
                 switch (index)
                 {
@@ -218,7 +226,7 @@ namespace Scar.UI
                     case 2: return "CONTROL";
                 }
             }
-            return $"OPTION 0{index + 1}";
+            return "OPTION 0" + (index + 1);
         }
 
         private Color GetOptionColor(int index, string choiceId)

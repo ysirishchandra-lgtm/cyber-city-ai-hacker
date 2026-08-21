@@ -12,28 +12,23 @@ namespace Scar.Gameplay.Level
 
         private bool _isDiscovered = false;
 
-        public bool IsDiscovered => _isDiscovered;
+        public bool IsDiscovered { get { return _isDiscovered; } }
 
         public bool Interact()
         {
             if (_isDiscovered) return false;
 
             _isDiscovered = true;
-            EventBus.Instance.Publish("CLUE_DISCOVERED", new
-            {
-                clueId = clueId,
-                name = clueName,
-                description = clueDescription
-            });
+            EventBus.Publish(GameEvents.CLUE_DISCOVERED, clueId);
 
             return true;
         }
 
         private void OnTriggerEnter(Collider other)
         {
-            if (other.CompareTag("Player") && !_isDiscovered)
+            if (other != null && other.CompareTag("Player") && !_isDiscovered)
             {
-                // Trigger prompt or auto-interact if desired
+                Interact();
             }
         }
     }

@@ -29,16 +29,19 @@ namespace Scar.Gameplay.Enemy
         private float _attackTimer = 0f;
         private Vector3 _lastKnownPlayerPos;
 
-        public EnemyState CurrentState => _currentState;
-        public EnemyArchetype Archetype => archetype;
+        public EnemyState CurrentState { get { return _currentState; } }
+        public EnemyArchetype Archetype { get { return archetype; } }
 
         private void Awake()
         {
             _agent = GetComponent<NavMeshAgent>();
             _health = GetComponent<HealthComponent>();
 
-            _health.OnDeath += HandleDeath;
-            _health.OnDamage += HandleDamage;
+            if (_health != null)
+            {
+                _health.OnDeath += HandleDeath;
+                _health.OnDamaged += HandleDamage;
+            }
 
             // Configure archetype stats
             switch (archetype)
@@ -50,7 +53,7 @@ namespace Scar.Gameplay.Enemy
                 case EnemyArchetype.ELITE:
                     attackRange = 2.5f;
                     attackDamage = 35f;
-                    _health.Initialize(250f);
+                    if (_health != null) _health.Initialize(250f);
                     break;
             }
         }
@@ -97,12 +100,15 @@ namespace Scar.Gameplay.Enemy
                 return;
             }
 
-            if (patrolWaypoints != null && patrolWaypoints.Length > 0)
+            if (patrolWaypoints != null && patrolWaypoints.Length > 0 && _agent != null)
             {
-                if (!_agent.hasPath || _agent.remainingDistance < 0.5f)
+                if (_agent.remainingDistance < 0.5f)
                 {
                     _currentWaypointIndex = (_currentWaypointIndex + 1) % patrolWaypoints.Length;
-                    _agent.SetDestination(patrolWaypoints[_currentWaypointIndex].position);
+                    if (patrolWaypoints[_currentWaypointIndex] != null)
+                    {
+                        _agent.SetDestination(patrolWaypoints[_currentWaypointIndex].position);
+                    }
                 }
             }
         }
@@ -112,19 +118,22 @@ namespace Scar.Gameplay.Enemy
             if (distToPlayer > detectionRadius * 1.5f)
             {
                 _currentState = EnemyState.SEARCH;
-                _lastKnownPlayerPos = _playerTransform.position;
+                if (_playerTransform != null) _lastKnownPlayerPos = _playerTransform.position;
                 return;
             }
 
             if (distToPlayer <= attackRange)
             {
                 _currentState = EnemyState.ATTACK;
-                _agent.isStopped = true;
+                if (_agent != null) _agent.isStopped = true;
                 return;
             }
 
-            _agent.isStopped = false;
-            _agent.SetDestination(_playerTransform.position);
+            if (_agent != null && _playerTransform != null)
+            {
+                _agent.isStopped = false;
+                _agent.SetDestination(_playerTransform.position);
+            }
         }
 
         private void UpdateAttack(float distToPlayer)
@@ -132,15 +141,14 @@ namespace Scar.Gameplay.Enemy
             if (distToPlayer > attackRange)
             {
                 _currentState = EnemyState.CHASE;
-                _agent.isStopped = false;
+                if (_agent != null) _agent.isStopped = false;
                 return;
             }
 
-            // Face player
-            Vector3 lookDir = (_playerTransform.position - transform.position).normalized;
-            lookDir.y = 0;
-            if (lookDir != Vector3.zero)
+            if (_playerTransform != null)
             {
+                Vector3 lookDir = (_playerTransform.position - transform.position).normalized;
+                lookDir.y = 0;
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDir), Time.deltaTime * 10f);
             }
 
@@ -156,15 +164,14 @@ namespace Scar.Gameplay.Enemy
             if (meleeHitbox != null)
             {
                 meleeHitbox.EnableHitbox();
-                Invoke(nameof(DisableHitbox), 0.3f);
+                Invoke("DisableHitbox", 0.3f);
             }
-            else if (archetype == EnemyArchetype.RANGED)
+            else if (archetype == EnemyArchetype.RANGED && _playerTransform != null)
             {
-                // RANGED attack: Apply direct damage or projectile
                 var hurtbox = _playerTransform.GetComponentInChildren<Hurtbox>();
                 if (hurtbox != null)
                 {
-                    hurtbox.ReceiveDamage(new DamageData(attackDamage, DamageType.RANGED, gameObject));
+                    hurtbox.ReceiveDamage(new DamageData(attackDamage, DamageType.RANGED, gameObject, Vector3.zero));
                 }
             }
         }
@@ -176,10 +183,13 @@ namespace Scar.Gameplay.Enemy
 
         private void UpdateSearch()
         {
-            _agent.SetDestination(_lastKnownPlayerPos);
-            if (_agent.remainingDistance < 0.5f)
+            if (_agent != null)
             {
-                _currentState = EnemyState.PATROL;
+                _agent.SetDestination(_lastKnownPlayerPos);
+                if (_agent.remainingDistance < 0.5f)
+                {
+                    _currentState = EnemyState.PATROL;
+                }
             }
         }
 
@@ -194,14 +204,22 @@ namespace Scar.Gameplay.Enemy
         private void HandleDeath()
         {
             _currentState = EnemyState.DEAD;
-            _agent.isStopped = true;
-            _agent.enabled = false;
-
-            EventBus.Instance.Publish(GameEvents.ENEMY_DEFEATED, new
+            if (_agent != null)
             {
-                enemyId = gameObject.name,
-                archetype = archetype.ToString()
-            });
+                _agent.isStopped = true;
+                _agent.enabled = false;
+            }
+
+            var defeatedEvent = new GameEvents.EnemyDefeatedEvent();
+            defeatedEvent.EnemyId = gameObject.name;
+            defeatedEvent.EnemyType = archetype.ToString();
+            defeatedEvent.TotalDefeated = GameManager.Instance != null && GameManager.Instance.State != null ? GameManager.Instance.State.EnemiesDefeated + 1 : 1;
+            EventBus.Publish(defeatedEvent);
+
+            if (GameManager.Instance != null && GameManager.Instance.State != null)
+            {
+                GameManager.Instance.State.RecordEnemyDefeated(gameObject.name, archetype.ToString(), 100);
+            }
 
             Destroy(gameObject, 3.0f);
         }

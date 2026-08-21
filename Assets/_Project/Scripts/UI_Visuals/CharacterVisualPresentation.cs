@@ -140,7 +140,7 @@ namespace Scar.UI
         {
             if (_characterType == CharacterType.HERO_ATLAS)
             {
-                bool isBossFight = e.NewPhase == GamePhase.FINAL_BATTLE;
+                bool isBossFight = e.NewPhase == GamePhase.FINAL_ENCOUNTER;
                 SetAtlasTyrantMode(isBossFight);
             }
         }

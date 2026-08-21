@@ -23,17 +23,19 @@ namespace Scar.Backend
 
         public async Task<T> GetAsync<T>(string endpoint)
         {
-            string url = $"{_config.apiBaseUrl}{endpoint}";
+            string url = (_config != null ? _config.apiBaseUrl : "https://api.cybercity.local") + endpoint;
+            int maxRetries = _config != null ? _config.maxRetries : 2;
+            int timeout = _config != null ? _config.timeoutSeconds : 5;
             int attempts = 0;
 
-            while (attempts <= _config.maxRetries)
+            while (attempts <= maxRetries)
             {
                 using (var req = UnityWebRequest.Get(url))
                 {
-                    req.timeout = _config.timeoutSeconds;
+                    req.timeout = timeout;
                     if (!string.IsNullOrEmpty(_authToken))
                     {
-                        req.SetRequestHeader("Authorization", $"Bearer {_authToken}");
+                        req.SetRequestHeader("Authorization", "Bearer " + _authToken);
                     }
 
                     var operation = req.SendWebRequest();
@@ -48,27 +50,29 @@ namespace Scar.Backend
                     }
 
                     attempts++;
-                    if (attempts > _config.maxRetries)
+                    if (attempts > maxRetries)
                     {
-                        Debug.LogError($"[AWSApiClient] GET {url} failed: {req.error}");
-                        return default;
+                        Debug.LogError("[AWSApiClient] GET " + url + " failed: " + req.error);
+                        return default(T);
                     }
                 }
             }
-            return default;
+            return default(T);
         }
 
         public async Task<T> PostAsync<T>(string endpoint, object payload)
         {
-            string url = $"{_config.apiBaseUrl}{endpoint}";
+            string url = (_config != null ? _config.apiBaseUrl : "https://api.cybercity.local") + endpoint;
+            int maxRetries = _config != null ? _config.maxRetries : 2;
+            int timeout = _config != null ? _config.timeoutSeconds : 5;
             int attempts = 0;
             string json = JsonUtility.ToJson(payload);
 
-            while (attempts <= _config.maxRetries)
+            while (attempts <= maxRetries)
             {
                 using (var req = new UnityWebRequest(url, "POST"))
                 {
-                    req.timeout = _config.timeoutSeconds;
+                    req.timeout = timeout;
                     byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
                     req.uploadHandler = new UploadHandlerRaw(bodyRaw);
                     req.downloadHandler = new DownloadHandlerBuffer();
@@ -76,7 +80,7 @@ namespace Scar.Backend
 
                     if (!string.IsNullOrEmpty(_authToken))
                     {
-                        req.SetRequestHeader("Authorization", $"Bearer {_authToken}");
+                        req.SetRequestHeader("Authorization", "Bearer " + _authToken);
                     }
 
                     var operation = req.SendWebRequest();
@@ -92,16 +96,16 @@ namespace Scar.Backend
                     }
 
                     attempts++;
-                    if (attempts > _config.maxRetries)
+                    if (attempts > maxRetries)
                     {
-                        Debug.LogError($"[AWSApiClient] POST {url} failed: {req.error}");
+                        Debug.LogError("[AWSApiClient] POST " + url + " failed: " + req.error);
                         if (typeof(T) == typeof(bool)) return (T)(object)false;
-                        return default;
+                        return default(T);
                     }
                 }
             }
             if (typeof(T) == typeof(bool)) return (T)(object)false;
-            return default;
+            return default(T);
         }
     }
 }

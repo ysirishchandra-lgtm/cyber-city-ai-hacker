@@ -16,7 +16,12 @@ namespace Scar.UI
     /// </summary>
     public class CinematicTimelineManager : MonoBehaviour
     {
-        public static CinematicTimelineManager Instance { get; private set; }
+        private static CinematicTimelineManager _instance;
+        public static CinematicTimelineManager Instance 
+        { 
+            get { return _instance; } 
+            private set { _instance = value; } 
+        }
 
         [Header("Playable Directors (Optional Timeline Assets)")]
         [SerializeField] private PlayableDirector _prologueDirector;
@@ -37,17 +42,22 @@ namespace Scar.UI
         [SerializeField] private float _prologueDuration = 10f;
 
         private Coroutine _activeCinematicCoroutine;
+        private bool _isPlayingCinematic = false;
 
-        public bool IsPlayingCinematic { get; private set; } = false;
+        public bool IsPlayingCinematic 
+        { 
+            get { return _isPlayingCinematic; } 
+            private set { _isPlayingCinematic = value; } 
+        }
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
                 return;
             }
-            Instance = this;
+            _instance = this;
 
             if (_cinematicCanvas != null) _cinematicCanvas.SetActive(true);
             if (_cinematicFadeGroup != null) _cinematicFadeGroup.alpha = 0f;
@@ -76,9 +86,8 @@ namespace Scar.UI
                     PlayPrologueSequence();
                     break;
                 case GamePhase.LEVEL_1:
-                    // Play transition into level 1
                     break;
-                case GamePhase.FINAL_BATTLE:
+                case GamePhase.FINAL_ENCOUNTER:
                     PlayAtlasRevealSequence();
                     break;
             }
@@ -96,10 +105,6 @@ namespace Scar.UI
 
         // ─── Cinematic Sequences ───────────────────────────────────────────────────
 
-        /// <summary>
-        /// 10-Second High-Impact Opening Prologue Sequence.
-        /// "EVERYONE HAS A POWER." -> [Pause] -> "EXCEPT YOU." -> City Descent.
-        /// </summary>
         public void PlayPrologueSequence(Action onComplete = null)
         {
             if (_activeCinematicCoroutine != null) StopCoroutine(_activeCinematicCoroutine);
@@ -135,7 +140,7 @@ namespace Scar.UI
             SetLetterbox(false);
 
             IsPlayingCinematic = false;
-            onComplete?.Invoke();
+            if (onComplete != null) onComplete();
 
             // Advance automatically to Level 1 if in Prologue
             if (GameManager.Instance != null && GameManager.Instance.State != null && GameManager.Instance.State.CurrentPhase == GamePhase.PROLOGUE)
@@ -144,9 +149,6 @@ namespace Scar.UI
             }
         }
 
-        /// <summary>
-        /// Scar Awakening moment: Triggered when power surges after surviving ambush.
-        /// </summary>
         public void PlayScarAwakeningSequence(Action onComplete = null)
         {
             if (_activeCinematicCoroutine != null) StopCoroutine(_activeCinematicCoroutine);
@@ -173,13 +175,14 @@ namespace Scar.UI
             SetLetterbox(false);
 
             IsPlayingCinematic = false;
-            onComplete?.Invoke();
+            if (onComplete != null) onComplete();
         }
 
         public void PlayMiniBossDefeatSequence(string bossName, Action onComplete = null)
         {
             if (_miniBossDefeatDirector != null) _miniBossDefeatDirector.Play();
-            StartCoroutine(FlashTextRoutine("THREAT ELIMINATED", $"{bossName.ToUpper()} NEUTRALIZED", 2.2f, onComplete));
+            string sub = (bossName != null ? bossName.ToUpper() : "TARGET") + " NEUTRALIZED";
+            StartCoroutine(FlashTextRoutine("THREAT ELIMINATED", sub, 2.2f, onComplete));
         }
 
         public void PlayAtlasRevealSequence(Action onComplete = null)
@@ -201,7 +204,7 @@ namespace Scar.UI
 
             yield return StartCoroutine(FadeTo(1f, 1.2f));
 
-            string headline = $"ENDING // {endingId.ToUpper()}";
+            string headline = "ENDING // " + (endingId != null ? endingId.ToUpper() : "UNKNOWN");
             string subtext = GetEndingSubtext(endingId);
             SetText(headline, subtext);
 
@@ -210,7 +213,7 @@ namespace Scar.UI
             ClearText();
             SetLetterbox(false);
             IsPlayingCinematic = false;
-            onComplete?.Invoke();
+            if (onComplete != null) onComplete();
         }
 
         private IEnumerator FlashTextRoutine(string headline, string subhead, float duration, Action onComplete)
@@ -220,7 +223,7 @@ namespace Scar.UI
             yield return new WaitForSeconds(duration);
             yield return StartCoroutine(FadeTo(0f, 0.5f));
             ClearText();
-            onComplete?.Invoke();
+            if (onComplete != null) onComplete();
         }
 
         // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -260,6 +263,7 @@ namespace Scar.UI
 
         private string GetEndingSubtext(string endingId)
         {
+            if (endingId == null) return "The choice has been made. Neo-Veridia will never be the same.";
             switch (endingId.ToUpper())
             {
                 case "VILLAIN": return "You took their power and burned their order to the ground. Fear is the only law now.";

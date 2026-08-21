@@ -12,31 +12,35 @@ namespace Scar.Gameplay.Combat
         [SerializeField] private LayerMask targetLayers;
 
         private Collider _collider;
-        private readonly HashSet<Hurtbox> _hitTargets = new();
+        private readonly HashSet<Hurtbox> _hitTargets = new HashSet<Hurtbox>();
         private GameObject _owner;
 
         private void Awake()
         {
             _collider = GetComponent<Collider>();
-            _collider.isTrigger = true;
-            _collider.enabled = false;
+            if (_collider != null)
+            {
+                _collider.isTrigger = true;
+                _collider.enabled = false;
+            }
             _owner = transform.root.gameObject;
         }
 
         public void EnableHitbox()
         {
             _hitTargets.Clear();
-            _collider.enabled = true;
+            if (_collider != null) _collider.enabled = true;
         }
 
         public void DisableHitbox()
         {
-            _collider.enabled = false;
+            if (_collider != null) _collider.enabled = false;
             _hitTargets.Clear();
         }
 
         private void OnTriggerEnter(Collider other)
         {
+            if (other == null) return;
             if (((1 << other.gameObject.layer) & targetLayers) == 0) return;
 
             var hurtbox = other.GetComponent<Hurtbox>();

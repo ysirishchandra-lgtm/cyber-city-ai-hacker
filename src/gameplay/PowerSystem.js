@@ -58,7 +58,7 @@ export class PowerSystem {
 
       case 'ADAPT':
       default:
-        // Adapt power: combines protective barrier and directional burst
+        // ADAPT power: combines protective barrier and directional nova burst
         this.executeAdaptPower(player, enemies, particleEffects);
         break;
     }
@@ -67,7 +67,7 @@ export class PowerSystem {
   }
 
   executeAdaptPower(player, enemies, particleEffects) {
-    // ADAPT power: Grants Kinetic Barrier immunity and repels nearby threats
+    // ADAPT signature ability: Activates Kinetic Barrier and triggers directional Nova
     this.executeKineticBarrier(player, enemies, particleEffects);
     this.executeDestructionNova(player, enemies, particleEffects);
   }

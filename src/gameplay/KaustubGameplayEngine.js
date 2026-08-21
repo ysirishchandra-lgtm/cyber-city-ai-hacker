@@ -53,14 +53,14 @@ export class KaustubGameplayEngine {
 
       if ((e.key === 'e' || e.key === 'E') && gameState.isPlaying()) {
         KaustubAPI.npcInteracted('INFORMANT_KIRA');
-        eventBus.emit(EVENTS.CHOICE_PRESENTED, { target: 'INTERACTABLE_CLUE' });
+        eventBus.emit(EVENTS.CLUE_DISCOVERED, { target: 'INTERACTABLE_CLUE' });
       }
 
       if (e.key === ' ' && gameState.isPlaying()) {
         if (gameState.hasPower()) {
           this.powerSystem.activate(this.player, this.enemies, this.particleEffects);
         } else {
-          this.player.sprintDodgeTimer = 0.3;
+          this.player.dodge();
         }
       }
     });
@@ -78,7 +78,7 @@ export class KaustubGameplayEngine {
       if (!gameState.isPlaying()) return;
 
       if (e.button === 0) {
-        // Left Click = Attack
+        // Left Click = Attack (with 3-hit combo)
         this.player.attack(this.enemies, this.particleEffects);
       } else if (e.button === 2) {
         // Right Click = Power activation after awakening

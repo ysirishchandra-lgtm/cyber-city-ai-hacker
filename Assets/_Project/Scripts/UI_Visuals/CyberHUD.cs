@@ -67,17 +67,13 @@ namespace Scar.UI
 
         private void OnEnable()
         {
-            SubscribeEvents();
+            RegisterEventSubscriptions();
+            InitializeHUD();
         }
 
         private void OnDisable()
         {
-            UnsubscribeEvents();
-        }
-
-        private void Start()
-        {
-            InitializeHUD();
+            UnregisterEventSubscriptions();
         }
 
         private void Update()
@@ -128,7 +124,9 @@ namespace Scar.UI
             }
         }
 
-        private void SubscribeEvents()
+        // ─── Lifecycle & Subscriptions ─────────────────────────────────────────────
+
+        private void RegisterEventSubscriptions()
         {
             EventBus.Subscribe<GameEvents.GameStartedEvent>(OnGameStarted);
             EventBus.Subscribe<GameEvents.PlayerDamagedEvent>(OnPlayerDamaged);
@@ -139,7 +137,7 @@ namespace Scar.UI
             EventBus.Subscribe<GameEvents.BossDefeatedEvent>(OnBossDefeated);
         }
 
-        private void UnsubscribeEvents()
+        private void UnregisterEventSubscriptions()
         {
             EventBus.Unsubscribe<GameEvents.GameStartedEvent>(OnGameStarted);
             EventBus.Unsubscribe<GameEvents.PlayerDamagedEvent>(OnPlayerDamaged);
@@ -160,9 +158,9 @@ namespace Scar.UI
                 _currentGhostHealth = state.Health;
 
                 if (_playerNameText != null) _playerNameText.text = state.PlayerName.ToUpper();
-                if (_levelPhaseText != null) _levelPhaseText.text = $"LVL.{state.CurrentLevel} // {state.CurrentPhase}";
-                if (_scoreText != null) _scoreText.text = $"SCORE: {state.Score:N0}";
-                if (_enemiesDefeatedText != null) _enemiesDefeatedText.text = $"ELIMINATIONS: {state.EnemiesDefeated}";
+                if (_levelPhaseText != null) _levelPhaseText.text = "LVL." + state.CurrentLevel + " // " + state.CurrentPhase;
+                if (_scoreText != null) _scoreText.text = "SCORE: " + state.Score;
+                if (_enemiesDefeatedText != null) _enemiesDefeatedText.text = "ELIMINATIONS: " + state.EnemiesDefeated;
 
                 UpdateHealthUI(_targetHealth, _maxHealth);
                 UpdatePowerStatus(state.PowerPath, "READY");
@@ -189,17 +187,17 @@ namespace Scar.UI
 
         private void OnLevelStarted(GameEvents.LevelStartedEvent e)
         {
-            if (_objectiveTitleText != null) _objectiveTitleText.text = $"▶ MISSION: {e.LevelName.ToUpper()}";
-            if (_objectiveDescriptionText != null) _objectiveDescriptionText.text = $"Infiltrate sector {e.LevelIndex} and locate the source.";
-            if (_levelPhaseText != null) _levelPhaseText.text = $"LVL.{e.LevelIndex} // ACTIVE";
+            if (_objectiveTitleText != null) _objectiveTitleText.text = "▶ MISSION: " + e.LevelName.ToUpper();
+            if (_objectiveDescriptionText != null) _objectiveDescriptionText.text = "Infiltrate sector " + e.LevelIndex + " and locate the source.";
+            if (_levelPhaseText != null) _levelPhaseText.text = "LVL." + e.LevelIndex + " // ACTIVE";
         }
 
         private void OnPhaseChanged(GameEvents.PhaseChangedEvent e)
         {
-            if (_levelPhaseText != null) _levelPhaseText.text = $"PHASE: {e.NewPhase.ToString().Replace('_', ' ')}";
+            if (_levelPhaseText != null) _levelPhaseText.text = "PHASE: " + e.NewPhase.ToString().Replace('_', ' ');
             UpdateThreatLevel(e.NewPhase);
 
-            if (e.NewPhase == GamePhase.FINAL_BATTLE)
+            if (e.NewPhase == GamePhase.FINAL_ENCOUNTER)
             {
                 if (_objectiveTitleText != null) _objectiveTitleText.text = "▶ CONFRONT ATLAS";
                 if (_objectiveDescriptionText != null) _objectiveDescriptionText.text = "The Prodigy must answer for the city's fate.";
@@ -213,7 +211,7 @@ namespace Scar.UI
 
         private void OnEnemyDefeated(GameEvents.EnemyDefeatedEvent e)
         {
-            if (_enemiesDefeatedText != null) _enemiesDefeatedText.text = $"ELIMINATIONS: {e.TotalDefeated}";
+            if (_enemiesDefeatedText != null) _enemiesDefeatedText.text = "ELIMINATIONS: " + e.TotalDefeated;
             if (GameManager.Instance != null && GameManager.Instance.State != null)
             {
                 _targetScore = GameManager.Instance.State.Score;
@@ -234,7 +232,7 @@ namespace Scar.UI
         {
             float pct = Mathf.Clamp01(currentHp / maxHp);
             if (_healthSlider != null) _healthSlider.value = pct;
-            if (_healthText != null) _healthText.text = $"HP: {Mathf.CeilToInt(currentHp)}/{Mathf.CeilToInt(maxHp)}";
+            if (_healthText != null) _healthText.text = "HP: " + Mathf.CeilToInt(currentHp) + "/" + Mathf.CeilToInt(maxHp);
         }
 
         private void UpdateGhostHealth(float dt)
@@ -253,11 +251,10 @@ namespace Scar.UI
 
         private void UpdateStaminaFromGameplay()
         {
-            // Visual stamina estimation or direct reading
             if (_staminaSlider != null && _staminaSlider.value < 1f)
             {
                 _staminaSlider.value = Mathf.MoveTowards(_staminaSlider.value, 1f, Time.deltaTime * 0.35f);
-                if (_staminaText != null) _staminaText.text = $"STAMINA: {Mathf.CeilToInt(_staminaSlider.value * 100)}%";
+                if (_staminaText != null) _staminaText.text = "STAMINA: " + Mathf.CeilToInt(_staminaSlider.value * 100) + "%";
             }
         }
 
@@ -265,7 +262,7 @@ namespace Scar.UI
         {
             float pct = Mathf.Clamp01(current / max);
             if (_staminaSlider != null) _staminaSlider.value = pct;
-            if (_staminaText != null) _staminaText.text = $"STAMINA: {Mathf.CeilToInt(pct * 100)}%";
+            if (_staminaText != null) _staminaText.text = "STAMINA: " + Mathf.CeilToInt(pct * 100) + "%";
         }
 
         public void SetPowerCooldown(float remaining, float duration)
@@ -322,7 +319,7 @@ namespace Scar.UI
                     _threatLevelText.text = "THREAT: ELEVATED [ENFORCERS]";
                     _threatIndicatorImage.color = _highThreatColor;
                     break;
-                case GamePhase.FINAL_BATTLE:
+                case GamePhase.FINAL_ENCOUNTER:
                     _threatLevelText.text = "THREAT: CRITICAL [ATLAS]";
                     _threatIndicatorImage.color = _bossThreatColor;
                     break;
@@ -338,11 +335,11 @@ namespace Scar.UI
             while (_displayedScore < _targetScore)
             {
                 _displayedScore = (int)Mathf.MoveTowards(_displayedScore, _targetScore, _scoreRollupSpeed * Time.deltaTime);
-                if (_scoreText != null) _scoreText.text = $"SCORE: {_displayedScore:N0}";
+                if (_scoreText != null) _scoreText.text = "SCORE: " + _displayedScore;
                 yield return null;
             }
             _displayedScore = _targetScore;
-            if (_scoreText != null) _scoreText.text = $"SCORE: {_displayedScore:N0}";
+            if (_scoreText != null) _scoreText.text = "SCORE: " + _displayedScore;
         }
     }
 }

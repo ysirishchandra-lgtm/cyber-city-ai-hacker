@@ -9,7 +9,7 @@ namespace Scar.Gameplay.Combat
         [SerializeField] private HealthComponent healthComponent;
         [SerializeField] private bool isInvulnerable = false;
 
-        public HealthComponent Health => healthComponent;
+        public HealthComponent Health { get { return healthComponent; } }
 
         private void Awake()
         {

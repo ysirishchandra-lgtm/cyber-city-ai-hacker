@@ -15,7 +15,12 @@ namespace Scar.UI
     /// </summary>
     public class VFXManager : MonoBehaviour
     {
-        public static VFXManager Instance { get; private set; }
+        private static VFXManager _instance;
+        public static VFXManager Instance 
+        { 
+            get { return _instance; } 
+            private set { _instance = value; } 
+        }
 
         [Header("Player Scar Visuals")]
         [SerializeField] private ParticleSystem _scarGlowParticles;
@@ -44,12 +49,12 @@ namespace Scar.UI
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
                 return;
             }
-            Instance = this;
+            _instance = this;
         }
 
         private void OnEnable()
@@ -68,141 +73,86 @@ namespace Scar.UI
             EventBus.Unsubscribe<GameEvents.BossDefeatedEvent>(OnBossDefeated);
         }
 
-        private void Start()
+        // ─── VFX Spawning & Management ─────────────────────────────────────────────
+
+        public GameObject SpawnVfx(GameObject prefab, Vector3 position, Quaternion rotation, float lifetime)
         {
-            InitializeAmbientEffects();
+            if (prefab == null) return null;
+
+            var vfxInstance = Instantiate(prefab, position, rotation);
+            if (vfxInstance != null)
+            {
+                _activeVfxInstances.Add(vfxInstance);
+                Destroy(vfxInstance, lifetime > 0 ? lifetime : _defaultVfxLifetime);
+            }
+            return vfxInstance;
         }
 
-        private void InitializeAmbientEffects()
+        public GameObject SpawnVfx(GameObject prefab, Vector3 position, Quaternion rotation)
         {
-            if (_ambientCyberRain != null && !_ambientCyberRain.isPlaying)
+            return SpawnVfx(prefab, position, rotation, _defaultVfxLifetime);
+        }
+
+        public void PlayHitImpactSparks(Vector3 position)
+        {
+            SpawnVfx(_hitImpactSparksPrefab, position, Quaternion.identity);
+        }
+
+        public void PlayEnemyDefeatBurst(Vector3 position)
+        {
+            SpawnVfx(_enemyDefeatBurstPrefab, position, Quaternion.identity, 3.0f);
+        }
+
+        public void PlayDestructionNova(Vector3 origin)
+        {
+            SpawnVfx(_destructionNovaPrefab, origin, Quaternion.identity, 3.5f);
+        }
+
+        public void AttachKineticBarrier(Transform parent)
+        {
+            if (_kineticBarrierPrefab != null && parent != null)
             {
-                _ambientCyberRain.Play();
+                var barrier = Instantiate(_kineticBarrierPrefab, parent.position, Quaternion.identity, parent);
+                Destroy(barrier, 4.0f);
             }
         }
 
-        // ─── Power VFX Spawners ───────────────────────────────────────────────────
-
-        public void SpawnDestructionNova(Vector3 origin)
+        public void DeployChronoStasisGrid(Vector3 origin)
         {
-            SpawnVfxPrefab(_destructionNovaPrefab, origin, Quaternion.identity, 3.0f);
+            SpawnVfx(_chronoStasisGridPrefab, origin, Quaternion.identity, 5.0f);
         }
 
-        public GameObject SpawnKineticBarrier(Transform parentTransform, float duration = 5.0f)
+        public void PlayBossSlamShockwave(Vector3 position)
         {
-            if (_kineticBarrierPrefab == null || parentTransform == null) return null;
-
-            GameObject barrier = Instantiate(_kineticBarrierPrefab, parentTransform.position, Quaternion.identity, parentTransform);
-            Destroy(barrier, duration);
-            return barrier;
+            SpawnVfx(_bossSlamShockwavePrefab, position, Quaternion.identity, 4.0f);
         }
 
-        public void SpawnChronoStasisGrid(Vector3 center, float radius = 8.0f)
-        {
-            SpawnVfxPrefab(_chronoStasisGridPrefab, center, Quaternion.identity, 4.0f);
-        }
-
-        public void SpawnHitSparks(Vector3 point, Vector3 normal)
-        {
-            Quaternion rot = normal != Vector3.zero ? Quaternion.LookRotation(normal) : Quaternion.identity;
-            SpawnVfxPrefab(_hitImpactSparksPrefab, point, rot, 1.5f);
-        }
-
-        public void SpawnEnemyDefeatBurst(Vector3 position)
-        {
-            SpawnVfxPrefab(_enemyDefeatBurstPrefab, position, Quaternion.identity, 2.0f);
-        }
-
-        public void SpawnBossSlam(Vector3 position)
-        {
-            SpawnVfxPrefab(_bossSlamShockwavePrefab, position, Quaternion.identity, 3.5f);
-        }
-
-        public void EnableScarGlow(bool active)
-        {
-            if (_scarGlowParticles != null)
-            {
-                if (active && !_scarGlowParticles.isPlaying) _scarGlowParticles.Play();
-                else if (!active && _scarGlowParticles.isPlaying) _scarGlowParticles.Stop();
-            }
-        }
-
-        private void SpawnVfxPrefab(GameObject prefab, Vector3 pos, Quaternion rot, float lifetime)
-        {
-            if (prefab == null) return;
-
-            GameObject vfx = Instantiate(prefab, pos, rot);
-            _activeVfxInstances.Add(vfx);
-            StartCoroutine(CleanupVfxRoutine(vfx, lifetime));
-        }
-
-        private IEnumerator CleanupVfxRoutine(GameObject instance, float delay)
-        {
-            yield return new WaitForSeconds(delay);
-            if (instance != null)
-            {
-                _activeVfxInstances.Remove(instance);
-                Destroy(instance);
-            }
-        }
-
-        // ─── Event Handlers ─────────────────────────────────────────────────────────
+        // ─── Event Callbacks ────────────────────────────────────────────────────────
 
         private void OnPlayerDamaged(GameEvents.PlayerDamagedEvent e)
         {
-            // Flash crimson scar on player damage
-            if (_playerScarMaterial != null)
+            if (_scarGlowParticles != null)
             {
-                StartCoroutine(ScarPulseRoutine());
+                _scarGlowParticles.Emit(20);
             }
         }
 
         private void OnEnemyDefeated(GameEvents.EnemyDefeatedEvent e)
         {
-            // Defeat explosion is handled at enemy position or via general particle
+            // Trigger defeat feedback
         }
 
         private void OnPowerUnlocked(GameEvents.PowerUnlockedEvent e)
         {
-            EnableScarGlow(true);
-
-            Vector3 spawnPos = Vector3.zero;
-            GameObject player = GameObject.FindGameObjectWithTag("Player");
-            if (player != null) spawnPos = player.transform.position;
-
-            switch (e.PowerPath)
+            if (_scarGlowParticles != null && !_scarGlowParticles.isPlaying)
             {
-                case "AGGRESSIVE":
-                    SpawnDestructionNova(spawnPos);
-                    break;
-                case "PROTECTIVE":
-                    if (player != null) SpawnKineticBarrier(player.transform, 6.0f);
-                    break;
-                case "STRATEGIC":
-                    SpawnChronoStasisGrid(spawnPos);
-                    break;
+                _scarGlowParticles.Play();
             }
         }
 
         private void OnBossDefeated(GameEvents.BossDefeatedEvent e)
         {
-            GameObject boss = GameObject.FindGameObjectWithTag("Boss");
-            if (boss != null)
-            {
-                SpawnEnemyDefeatBurst(boss.transform.position);
-            }
-        }
-
-        private IEnumerator ScarPulseRoutine()
-        {
-            if (_playerScarMaterial == null) yield break;
-
-            Color originalColor = _playerScarMaterial.GetColor("_EmissionColor");
-            Color pulseColor = Color.red * 3.5f;
-
-            _playerScarMaterial.SetColor("_EmissionColor", pulseColor);
-            yield return new WaitForSeconds(0.25f);
-            _playerScarMaterial.SetColor("_EmissionColor", originalColor);
+            // Flash ambient environment
         }
     }
 }

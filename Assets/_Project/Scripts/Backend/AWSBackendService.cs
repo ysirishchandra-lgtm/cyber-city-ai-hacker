@@ -16,9 +16,37 @@ namespace Scar.Backend
         private string _activeSessionId = string.Empty;
         private bool _isAuthenticated = false;
 
-        public bool IsAuthenticated => _isAuthenticated;
-        public string ActivePlayerId => _activePlayerId;
-        public string ActiveSessionId => _activeSessionId;
+        public bool IsAuthenticated { get { return _isAuthenticated; } }
+        public string ActivePlayerId { get { return _activePlayerId; } }
+        public string ActiveSessionId { get { return _activeSessionId; } }
+
+        private AWSApiClient ApiClient
+        {
+            get
+            {
+                if (_apiClient == null)
+                {
+                    if (_config == null)
+                    {
+                        _config = ScriptableObject.CreateInstance<AWSConfig>();
+                    }
+                    _apiClient = new AWSApiClient(_config);
+                }
+                return _apiClient;
+            }
+        }
+
+        private LocalSaveService LocalSave
+        {
+            get
+            {
+                if (_localSave == null)
+                {
+                    _localSave = new LocalSaveService();
+                }
+                return _localSave;
+            }
+        }
 
         private void Awake()
         {
@@ -35,34 +63,34 @@ namespace Scar.Backend
         public async void RegisterUser(string username, string email, string password, Action<bool, string> onComplete)
         {
             var req = new AuthRequest { username = username, email = email, password = password };
-            var res = await _apiClient.PostAsync<AuthResponse>("/auth/register", req);
+            var res = await ApiClient.PostAsync<AuthResponse>("/auth/register", req);
 
             if (res != null && res.success)
             {
-                onComplete?.Invoke(true, "Registration successful");
+                if (onComplete != null) onComplete(true, "Registration successful");
             }
             else
             {
-                onComplete?.Invoke(false, "Registration failed");
+                if (onComplete != null) onComplete(false, "Registration failed");
             }
         }
 
         public async void AuthenticateUser(string email, string password, Action<bool, string> onComplete)
         {
             var req = new AuthRequest { email = email, password = password };
-            var res = await _apiClient.PostAsync<AuthResponse>("/auth/login", req);
+            var res = await ApiClient.PostAsync<AuthResponse>("/auth/login", req);
 
             if (res != null && !string.IsNullOrEmpty(res.token))
             {
-                _apiClient.SetAuthToken(res.token);
+                ApiClient.SetAuthToken(res.token);
                 _activePlayerId = res.playerId;
                 _isAuthenticated = true;
-                onComplete?.Invoke(true, "Authentication successful");
+                if (onComplete != null) onComplete(true, "Authentication successful");
             }
             else
             {
                 _isAuthenticated = false;
-                onComplete?.Invoke(false, "Authentication failed");
+                if (onComplete != null) onComplete(false, "Authentication failed");
             }
         }
 
@@ -70,36 +98,37 @@ namespace Scar.Backend
         {
             if (!_isAuthenticated)
             {
-                onComplete?.Invoke(false, "Not authenticated");
+                // Offline fallback session
+                _activeSessionId = Guid.NewGuid().ToString();
+                if (onComplete != null) onComplete(true, _activeSessionId);
                 return;
             }
 
-            // In a real implementation this might post to /game/session to get a session ID
-            // For now we mock the session creation and rely on the local GUID or response
-            var req = new { playerId = playerId };
-            var res = await _apiClient.PostAsync<AuthResponse>("/game/session", req);
+            var req = new AuthRequest { username = playerId };
+            var res = await ApiClient.PostAsync<AuthResponse>("/game/session", req);
 
             if (res != null && res.success)
             {
-                _activeSessionId = res.message; // Assuming message contains sessionId
-                onComplete?.Invoke(true, _activeSessionId);
+                _activeSessionId = res.message;
+                if (onComplete != null) onComplete(true, _activeSessionId);
             }
             else
             {
-                // Fallback to local session
                 _activeSessionId = Guid.NewGuid().ToString();
-                onComplete?.Invoke(true, _activeSessionId); // Offline fallback
+                if (onComplete != null) onComplete(true, _activeSessionId); // Offline fallback
             }
         }
 
         public async void SubmitFinalScore(GameState state, Action<bool, string> onComplete)
         {
+            if (state == null) return;
+
             // Always save locally first as offline fallback
             SaveLocally(state);
 
             if (!_isAuthenticated)
             {
-                onComplete?.Invoke(false, "Saved locally (Offline)");
+                if (onComplete != null) onComplete(false, "Saved locally (Offline)");
                 return;
             }
 
@@ -113,34 +142,34 @@ namespace Scar.Backend
                 choicesCount = state.ChoicesMade,
                 enemiesDefeated = state.EnemiesDefeated,
                 missionsCompleted = state.MissionsCompleted,
-                completionTime = 0, // Should be passed from GameState if tracked
+                completionTime = 0,
                 damageReceived = 0,
                 powerUsage = 0
             };
 
-            var success = await _apiClient.PostAsync<bool>("/scores", payload);
+            var success = await ApiClient.PostAsync<bool>("/scores", payload);
             if (success)
             {
-                onComplete?.Invoke(true, "Score submitted successfully");
+                if (onComplete != null) onComplete(true, "Score submitted successfully");
             }
             else
             {
-                onComplete?.Invoke(false, "Score submission failed. Saved locally.");
+                if (onComplete != null) onComplete(false, "Score submission failed. Saved locally.");
             }
         }
 
         public async void FetchGlobalLeaderboard(Action<bool, List<LeaderboardEntryDTO>> onComplete)
         {
-            var res = await _apiClient.GetAsync<LeaderboardResponse>("/leaderboard");
+            var res = await ApiClient.GetAsync<LeaderboardResponse>("/leaderboard");
             
             if (res != null && res.entries != null)
             {
-                onComplete?.Invoke(true, res.entries);
+                if (onComplete != null) onComplete(true, res.entries);
             }
             else
             {
-                // Empty fallback instead of fabricated data
-                onComplete?.Invoke(false, new List<LeaderboardEntryDTO>());
+                // Empty fallback without fake data
+                if (onComplete != null) onComplete(false, new List<LeaderboardEntryDTO>());
             }
         }
 
@@ -157,12 +186,12 @@ namespace Scar.Backend
                 metadata = metadata
             };
 
-            await _apiClient.PostAsync<bool>("/analytics", evt);
-            // Non-blocking, failure is ignored or we could cache locally
+            await ApiClient.PostAsync<bool>("/analytics", evt);
         }
 
         private void SaveLocally(GameState state)
         {
+            if (state == null) return;
             var data = new GameSaveData
             {
                 playerId = state.PlayerId,
@@ -176,7 +205,7 @@ namespace Scar.Backend
                 score = state.Score,
                 ending = state.Ending
             };
-            _localSave.Save(data);
+            LocalSave.Save(data);
         }
     }
 }

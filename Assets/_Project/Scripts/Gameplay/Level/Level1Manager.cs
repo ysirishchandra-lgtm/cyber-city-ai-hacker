@@ -22,32 +22,32 @@ namespace Scar.Gameplay.Level
         private int _enemiesDefeated = 0;
         private bool _clueFound = false;
 
-        public Level1Stage CurrentStage => _currentStage;
+        public Level1Stage CurrentStage { get { return _currentStage; } }
 
         private void Awake()
         {
-            EventBus.Instance.Subscribe("CLUE_DISCOVERED", OnClueDiscovered);
-            EventBus.Instance.Subscribe(GameEvents.ENEMY_DEFEATED, OnEnemyDefeated);
-            EventBus.Instance.Subscribe(GameEvents.BOSS_DEFEATED, OnBossDefeated);
+            EventBus.Subscribe(GameEvents.CLUE_DISCOVERED, OnClueDiscovered);
+            EventBus.Subscribe(GameEvents.ENEMY_DEFEATED, OnEnemyDefeated);
+            EventBus.Subscribe(GameEvents.BOSS_DEFEATED, OnBossDefeated);
         }
 
         private void OnDestroy()
         {
-            EventBus.Instance.Unsubscribe("CLUE_DISCOVERED", OnClueDiscovered);
-            EventBus.Instance.Unsubscribe(GameEvents.ENEMY_DEFEATED, OnEnemyDefeated);
-            EventBus.Instance.Unsubscribe(GameEvents.BOSS_DEFEATED, OnBossDefeated);
+            EventBus.Unsubscribe(GameEvents.CLUE_DISCOVERED, OnClueDiscovered);
+            EventBus.Unsubscribe(GameEvents.ENEMY_DEFEATED, OnEnemyDefeated);
+            EventBus.Unsubscribe(GameEvents.BOSS_DEFEATED, OnBossDefeated);
         }
 
         public void AdvanceStage(Level1Stage nextStage)
         {
             _currentStage = nextStage;
-            EventBus.Instance.Publish("LEVEL_STAGE_CHANGED", new { stage = _currentStage.ToString() });
+            EventBus.Publish("LEVEL_STAGE_CHANGED", _currentStage.ToString());
         }
 
         private void OnClueDiscovered(object payload)
         {
             _clueFound = true;
-            if (_currentStage == Level1Stage.INVESTIGATE_CLUE || _currentStage == Level1Stage.REACH_ALLEY)
+            if (_currentStage == Level1Stage.INVESTIGATE_CLUE || _currentStage == Level1Stage.REACH_ALLEY || _currentStage == Level1Stage.START_HOME)
             {
                 AdvanceStage(Level1Stage.DEFEAT_WAVE);
             }
@@ -65,7 +65,12 @@ namespace Scar.Gameplay.Level
         private void OnBossDefeated(object payload)
         {
             AdvanceStage(Level1Stage.POWER_AWAKENING);
-            EventBus.Instance.Publish(GameEvents.POWER_AWAKENED, "DESTRUCTION");
+            EventBus.Publish(GameEvents.POWER_AWAKENED, "DESTRUCTION");
+
+            if (GameManager.Instance != null && GameManager.Instance.State != null)
+            {
+                GameManager.Instance.State.SetPhase(GamePhase.POWER_AWAKENING);
+            }
         }
     }
 }

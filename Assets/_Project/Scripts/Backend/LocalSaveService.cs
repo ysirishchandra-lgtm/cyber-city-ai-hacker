@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using UnityEngine;
 
@@ -20,9 +21,9 @@ namespace Scar.Backend
                 File.WriteAllText(_savePath, json);
                 Debug.Log("[LocalSaveService] Game saved locally.");
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
-                Debug.LogError($"[LocalSaveService] Failed to save: {e.Message}");
+                Debug.LogError("[LocalSaveService] Failed to save: " + e.Message);
             }
         }
 
@@ -36,9 +37,9 @@ namespace Scar.Backend
                     return JsonUtility.FromJson<GameSaveData>(json);
                 }
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
-                Debug.LogError($"[LocalSaveService] Failed to load: {e.Message}");
+                Debug.LogError("[LocalSaveService] Failed to load: " + e.Message);
             }
             return null;
         }

@@ -32,23 +32,30 @@ namespace Scar.Gameplay.Hero
         private float _attackTimer = 0f;
         private string _observedPlayerPath = "NEUTRAL";
 
-        public HeroState CurrentState => _currentState;
+        public HeroState CurrentState { get { return _currentState; } }
+
+        public void SetState(HeroState newState)
+        {
+            _currentState = newState;
+        }
 
         private void Awake()
         {
             _agent = GetComponent<NavMeshAgent>();
             _health = GetComponent<HealthComponent>();
-            _health.Initialize(maxHealth);
+            if (_health != null)
+            {
+                _health.Initialize(maxHealth);
+                _health.OnDamaged += HandleDamage;
+                _health.OnDeath += HandleDeath;
+            }
 
-            _health.OnDamage += HandleDamage;
-            _health.OnDeath += HandleDeath;
-
-            EventBus.Instance.Subscribe(GameEvents.POWER_PATH_CHANGED, OnPowerPathChanged);
+            EventBus.Subscribe(GameEvents.POWER_PATH_CHANGED, OnPowerPathChanged);
         }
 
         private void OnDestroy()
         {
-            EventBus.Instance.Unsubscribe(GameEvents.POWER_PATH_CHANGED, OnPowerPathChanged);
+            EventBus.Unsubscribe(GameEvents.POWER_PATH_CHANGED, OnPowerPathChanged);
         }
 
         private void Start()
@@ -74,17 +81,20 @@ namespace Scar.Gameplay.Hero
                     if (distToPlayer <= observeDistance)
                     {
                         _currentState = HeroState.FOLLOW;
-                        EventBus.Instance.Publish(GameEvents.HERO_DETECTED_PLAYER, transform.position);
+                        EventBus.Publish(GameEvents.HERO_DETECTED_PLAYER, transform.position);
                     }
                     break;
 
                 case HeroState.FOLLOW:
-                    _agent.isStopped = false;
-                    _agent.SetDestination(_playerTransform.position);
+                    if (_agent != null && _playerTransform != null)
+                    {
+                        _agent.isStopped = false;
+                        _agent.SetDestination(_playerTransform.position);
+                    }
                     if (distToPlayer <= confrontDistance)
                     {
                         _currentState = HeroState.CONFRONT;
-                        EventBus.Instance.Publish(GameEvents.HERO_ENCOUNTER, transform.position);
+                        EventBus.Publish(GameEvents.HERO_ENCOUNTER, transform.position);
                     }
                     break;
 
@@ -95,15 +105,17 @@ namespace Scar.Gameplay.Hero
                     }
                     else
                     {
-                        _agent.isStopped = true;
+                        if (_agent != null) _agent.isStopped = true;
                         PerformHeroAttack();
                     }
                     break;
 
                 case HeroState.COUNTER:
-                    // High aggression burst phase in Final Battle
-                    _agent.isStopped = false;
-                    _agent.SetDestination(_playerTransform.position);
+                    if (_agent != null && _playerTransform != null)
+                    {
+                        _agent.isStopped = false;
+                        _agent.SetDestination(_playerTransform.position);
+                    }
                     if (distToPlayer <= confrontDistance)
                     {
                         PerformHeroAttack();
@@ -111,9 +123,12 @@ namespace Scar.Gameplay.Hero
                     break;
 
                 case HeroState.RETREAT:
-                    Vector3 retreatDir = (transform.position - _playerTransform.position).normalized;
-                    _agent.isStopped = false;
-                    _agent.SetDestination(transform.position + retreatDir * 10f);
+                    if (_playerTransform != null && _agent != null)
+                    {
+                        Vector3 retreatDir = (transform.position - _playerTransform.position).normalized;
+                        _agent.isStopped = false;
+                        _agent.SetDestination(transform.position + retreatDir * 10f);
+                    }
                     if (distToPlayer > observeDistance)
                     {
                         _currentState = HeroState.CONFRONT;
@@ -125,7 +140,7 @@ namespace Scar.Gameplay.Hero
         public void StartFinalBattle()
         {
             _currentState = HeroState.COUNTER;
-            EventBus.Instance.Publish(GameEvents.FINAL_BATTLE_STARTED, transform.position);
+            EventBus.Publish(GameEvents.FINAL_BATTLE_STARTED, transform.position);
         }
 
         private void PerformHeroAttack()
@@ -137,14 +152,13 @@ namespace Scar.Gameplay.Hero
             if (hurtbox != null)
             {
                 float damage = _observedPlayerPath == "AGGRESSIVE" ? 30f : 20f;
-                hurtbox.ReceiveDamage(new DamageData(damage, DamageType.MELEE, gameObject));
+                hurtbox.ReceiveDamage(new DamageData(damage, DamageType.MELEE, gameObject, Vector3.zero));
             }
         }
 
         private void HandleDamage(DamageData data)
         {
-            // If Hero suffers massive damage, enter RETREAT state briefly
-            if (data.amount >= 40f && _currentState != HeroState.COUNTER)
+            if (data != null && data.amount >= 40f && _currentState != HeroState.COUNTER)
             {
                 _currentState = HeroState.RETREAT;
             }
@@ -152,15 +166,23 @@ namespace Scar.Gameplay.Hero
 
         private void HandleDeath()
         {
-            _agent.isStopped = true;
-            _agent.enabled = false;
+            if (_agent != null)
+            {
+                _agent.isStopped = true;
+                _agent.enabled = false;
+            }
 
-            EventBus.Instance.Publish(GameEvents.BOSS_DEFEATED, new { bossId = "ATLAS_BOSS" });
+            var bossDefeatedEvent = new GameEvents.BossDefeatedEvent();
+            bossDefeatedEvent.BossId = "ATLAS_BOSS";
+            bossDefeatedEvent.BattleDuration = 45f;
+            EventBus.Publish(bossDefeatedEvent);
+            EventBus.Publish(GameEvents.BOSS_DEFEATED, "ATLAS_BOSS");
         }
 
         private void OnPowerPathChanged(object payload)
         {
-            if (payload is string path)
+            string path = payload as string;
+            if (path != null)
             {
                 _observedPlayerPath = path;
             }

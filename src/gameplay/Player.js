@@ -27,13 +27,15 @@ export class Player {
     this.maxStamina = 100;
 
     this.attackCooldown = 0;
-    this.attackRate = 0.35;
+    this.attackRate = 0.28;
     this.isAttacking = false;
     this.attackAnimationTimer = 0;
+    this.comboStep = 0;
+    this.comboResetTimer = 0;
 
     this.lastEmittedX = x;
     this.lastEmittedY = y;
-    this.sprintDodgeTimer = 0;
+    this.dodgeTimer = 0;
   }
 
   reset(x = 100, y = 100) {
@@ -44,12 +46,37 @@ export class Player {
     this.stamina = 100;
     this.attackCooldown = 0;
     this.isAttacking = false;
-    this.sprintDodgeTimer = 0;
+    this.comboStep = 0;
+    this.comboResetTimer = 0;
+    this.dodgeTimer = 0;
     KaustubAPI.updatePosition(x, y);
+  }
+
+  dodge() {
+    if (this.stamina >= 20 && this.dodgeTimer <= 0) {
+      this.stamina -= 20;
+      this.dodgeTimer = 0.35; // 350ms invulnerability window + dash
+      this.x += Math.cos(this.facingAngle) * 45;
+      this.y += Math.sin(this.facingAngle) * 45;
+      KaustubAPI.updatePosition(Math.round(this.x), Math.round(this.y));
+      return true;
+    }
+    return false;
   }
 
   handleInput(keys, mousePos, camera, dt) {
     if (KaustubAPI.isChoiceBlocking()) return;
+
+    if (this.dodgeTimer > 0) {
+      this.dodgeTimer -= dt;
+    }
+
+    if (this.comboResetTimer > 0) {
+      this.comboResetTimer -= dt;
+      if (this.comboResetTimer <= 0) {
+        this.comboStep = 0;
+      }
+    }
 
     let dx = 0;
     let dy = 0;
@@ -114,29 +141,37 @@ export class Player {
   attack(enemies, particleEffects) {
     if (this.attackCooldown > 0 || KaustubAPI.isChoiceBlocking()) return false;
 
+    // 3-Hit Combo sequence: Step 1 (25 dmg) -> Step 2 (32 dmg) -> Step 3 (45 dmg finisher)
+    this.comboStep = (this.comboStep % 3) + 1;
+    this.comboResetTimer = 0.85;
+
     this.attackCooldown = this.attackRate;
     this.isAttacking = true;
     this.attackAnimationTimer = 0.2;
 
     const attackRange = 75;
-    const attackDamage = 25;
+    const baseDamage = 25;
+    const comboMultipliers = { 1: 1.0, 2: 1.28, 3: 1.8 };
+    const attackDamage = Math.round(baseDamage * (comboMultipliers[this.comboStep] || 1.0));
     const attackArc = Math.PI / 2;
 
     let hitAny = false;
 
     if (particleEffects) {
+      const slashColors = { 1: '#00ffff', 2: '#00ff88', 3: '#ff0055' };
       particleEffects.push({
         type: 'slash',
         x: this.x + Math.cos(this.facingAngle) * 30,
         y: this.y + Math.sin(this.facingAngle) * 30,
         angle: this.facingAngle,
-        life: 0.15,
-        maxLife: 0.15
+        color: slashColors[this.comboStep] || '#00ffff',
+        life: 0.18,
+        maxLife: 0.18
       });
     }
 
     // Record Aggressive choice action influence in GameState
-    gameState.recordChoice('COMBAT_MELEE_ATTACK', 'Executed direct melee assault', 'AGGRESSIVE');
+    gameState.recordChoice('COMBAT_MELEE_ATTACK', `Executed combo strike step ${this.comboStep}`, 'AGGRESSIVE');
 
     enemies.forEach(enemy => {
       if (enemy.isAlive) {
@@ -153,8 +188,10 @@ export class Player {
             enemy.takeDamage(attackDamage, 'MELEE');
             hitAny = true;
             
-            enemy.x += Math.cos(this.facingAngle) * 25;
-            enemy.y += Math.sin(this.facingAngle) * 25;
+            // Knockback on hit, extra knockback on 3rd combo finisher
+            const knockbackDist = this.comboStep === 3 ? 45 : 25;
+            enemy.x += Math.cos(this.facingAngle) * knockbackDist;
+            enemy.y += Math.sin(this.facingAngle) * knockbackDist;
           }
         }
       }
@@ -164,6 +201,11 @@ export class Player {
   }
 
   takeDamage(amount, powerSystem) {
+    if (this.dodgeTimer > 0) {
+      // Invulnerable during dodge roll
+      return 0;
+    }
+
     if (powerSystem && powerSystem.isShieldActive) {
       gameState.recordChoice('SHIELD_ABSORB', 'Absorbed damage with Kinetic Barrier', 'PROTECTIVE');
       return 0;

@@ -50,7 +50,7 @@ namespace Scar.UI
         private string _currentFullText = string.Empty;
         private Action _onSequenceComplete;
 
-        public bool IsActive => _dialoguePanel != null && _dialoguePanel.activeSelf;
+        public bool IsActive { get { return _dialoguePanel != null && _dialoguePanel.activeSelf; } }
 
         private void Awake()
         {
@@ -62,80 +62,72 @@ namespace Scar.UI
         {
             if (!IsActive) return;
 
-            if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.E) || Input.GetMouseButtonDown(0))
+            if (Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0))
             {
-                OnUserAdvanceInput();
+                OnAdvanceInput();
             }
         }
 
-        public void StartDialogueSequence(List<DialogueLine> lines, Action onComplete = null)
+        public void StartDialogueSequence(IEnumerable<DialogueLine> lines, Action onComplete = null)
         {
-            if (lines == null || lines.Count == 0)
-            {
-                onComplete?.Invoke();
-                return;
-            }
+            if (lines == null) return;
 
-            _onSequenceComplete = onComplete;
             _dialogueQueue.Clear();
-
             foreach (var line in lines)
             {
                 _dialogueQueue.Enqueue(line);
             }
 
+            _onSequenceComplete = onComplete;
+
             if (_dialoguePanel != null) _dialoguePanel.SetActive(true);
             DisplayNextLine();
         }
 
-        public void DisplaySingleLine(string speaker, string text, Action onComplete = null)
-        {
-            var line = new DialogueLine
-            {
-                Speaker = speaker,
-                Text = text,
-                AccentColor = GetColorForSpeaker(speaker)
-            };
-
-            StartDialogueSequence(new List<DialogueLine> { line }, onComplete);
-        }
-
-        private void DisplayNextLine()
+        public void DisplayNextLine()
         {
             if (_dialogueQueue.Count == 0)
             {
-                EndDialogue();
+                EndDialogueSequence();
                 return;
             }
 
-            var line = _dialogueQueue.Dequeue();
-            _currentFullText = line.Text;
+            var nextLine = _dialogueQueue.Dequeue();
 
-            if (_speakerNameText != null)
-            {
-                _speakerNameText.text = line.Speaker.ToUpper();
-                _speakerNameText.color = line.AccentColor != default ? line.AccentColor : GetColorForSpeaker(line.Speaker);
-            }
-
-            if (_accentGlowImage != null)
-            {
-                _accentGlowImage.color = line.AccentColor != default ? line.AccentColor : GetColorForSpeaker(line.Speaker);
-            }
-
-            if (_continueIndicator != null) _continueIndicator.SetActive(false);
+            if (_speakerNameText != null) _speakerNameText.text = nextLine.Speaker.ToUpper();
+            if (_accentGlowImage != null) _accentGlowImage.color = nextLine.AccentColor != default(Color) ? nextLine.AccentColor : GetCharacterColor(nextLine.Speaker);
+            if (_speakerNameText != null) _speakerNameText.color = _accentGlowImage != null ? _accentGlowImage.color : Color.white;
 
             if (_typingCoroutine != null) StopCoroutine(_typingCoroutine);
-            _typingCoroutine = StartCoroutine(TypeText(line.Text));
+            _typingCoroutine = StartCoroutine(TypeText(nextLine.Text));
         }
 
-        private IEnumerator TypeText(string text)
+        public void OnAdvanceInput()
+        {
+            if (_isTyping)
+            {
+                // Instant skip typing
+                if (_typingCoroutine != null) StopCoroutine(_typingCoroutine);
+                if (_dialogueBodyText != null) _dialogueBodyText.text = _currentFullText;
+                _isTyping = false;
+                if (_continueIndicator != null) _continueIndicator.SetActive(true);
+            }
+            else
+            {
+                DisplayNextLine();
+            }
+        }
+
+        private IEnumerator TypeText(string fullText)
         {
             _isTyping = true;
+            _currentFullText = fullText;
             if (_dialogueBodyText != null) _dialogueBodyText.text = string.Empty;
+            if (_continueIndicator != null) _continueIndicator.SetActive(false);
 
-            foreach (char c in text)
+            for (int i = 0; i <= fullText.Length; i++)
             {
-                if (_dialogueBodyText != null) _dialogueBodyText.text += c;
+                if (_dialogueBodyText != null) _dialogueBodyText.text = fullText.Substring(0, i);
                 yield return new WaitForSeconds(_typingSpeed);
             }
 
@@ -149,40 +141,28 @@ namespace Scar.UI
             }
         }
 
-        public void OnUserAdvanceInput()
-        {
-            if (_isTyping)
-            {
-                // Fast-forward to complete line
-                if (_typingCoroutine != null) StopCoroutine(_typingCoroutine);
-                if (_dialogueBodyText != null) _dialogueBodyText.text = _currentFullText;
-                _isTyping = false;
-                if (_continueIndicator != null) _continueIndicator.SetActive(true);
-            }
-            else
-            {
-                DisplayNextLine();
-            }
-        }
-
-        private void EndDialogue()
+        private void EndDialogueSequence()
         {
             if (_dialoguePanel != null) _dialoguePanel.SetActive(false);
-            if (_continueIndicator != null) _continueIndicator.SetActive(false);
-            _onSequenceComplete?.Invoke();
-            _onSequenceComplete = null;
+            if (_onSequenceComplete != null)
+            {
+                _onSequenceComplete.Invoke();
+                _onSequenceComplete = null;
+            }
         }
 
-        private Color GetColorForSpeaker(string speaker)
+        private Color GetCharacterColor(string speaker)
         {
             if (string.IsNullOrEmpty(speaker)) return Color.white;
-            string s = speaker.ToUpper();
-            if (s.Contains("ATLAS") && s.Contains("TYRANT")) return _atlasDarkColor;
-            if (s.Contains("ATLAS")) return _atlasColor;
-            if (s.Contains("KIRA")) return _kiraColor;
-            if (s.Contains("INNER") || s.Contains("VOICE")) return _innerVoiceColor;
-            if (s.Contains("PLAYER")) return _playerColor;
-            return Color.white;
+            switch (speaker.ToUpper())
+            {
+                case "ATLAS": return _atlasColor;
+                case "ATLAS (TYRANT)": return _atlasDarkColor;
+                case "KIRA": return _kiraColor;
+                case "INNER VOICE": return _innerVoiceColor;
+                case "PLAYER": return _playerColor;
+                default: return Color.white;
+            }
         }
     }
 }

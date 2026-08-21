@@ -5,61 +5,96 @@ namespace Scar.Core
 {
     /// <summary>
     /// SCAR — The Last Choice
-    /// Lightweight, type-safe, decoupled Event Bus for Unity 6.
+    /// Master Lightweight, type-safe, decoupled Event Bus for Unity 6.
+    /// Supports both generic typed struct dispatch and string topic dispatch.
     /// Author: Sirish (Lead / Integration)
     /// </summary>
     public static class EventBus
     {
-        private static readonly Dictionary<Type, List<Delegate>> _subscribers = new Dictionary<Type, List<Delegate>>();
+        private static readonly Dictionary<Type, List<Delegate>> _typedSubscribers = new Dictionary<Type, List<Delegate>>();
+        private static readonly Dictionary<string, List<Action<object>>> _stringSubscribers = new Dictionary<string, List<Action<object>>>();
 
-        /// <summary>
-        /// Subscribe a listener method to a specific event type.
-        /// </summary>
+        // Singleton compatibility wrapper for legacy or dynamic calls (EventBus.Instance)
+        public static readonly EventBusInstanceWrapper Instance = new EventBusInstanceWrapper();
+
+        public class EventBusInstanceWrapper
+        {
+            public void Subscribe(string eventName, Action<object> callback) 
+            { 
+                EventBus.Subscribe(eventName, callback); 
+            }
+
+            public void Unsubscribe(string eventName, Action<object> callback) 
+            { 
+                EventBus.Unsubscribe(eventName, callback); 
+            }
+
+            public void Publish(string eventName, object payload) 
+            { 
+                EventBus.Publish(eventName, payload); 
+            }
+
+            public void Publish(string eventName) 
+            { 
+                EventBus.Publish(eventName, null); 
+            }
+
+            public void Subscribe<T>(Action<T> listener) where T : struct 
+            { 
+                EventBus.Subscribe(listener); 
+            }
+
+            public void Unsubscribe<T>(Action<T> listener) where T : struct 
+            { 
+                EventBus.Unsubscribe(listener); 
+            }
+
+            public void Publish<T>(T eventData) where T : struct 
+            { 
+                EventBus.Publish(eventData); 
+            }
+        }
+
+        // ─── Generic Typed Struct Pub/Sub ─────────────────────────────────────────
+
         public static void Subscribe<T>(Action<T> listener) where T : struct
         {
             if (listener == null) return;
             Type eventType = typeof(T);
 
-            if (!_subscribers.ContainsKey(eventType))
+            if (!_typedSubscribers.ContainsKey(eventType))
             {
-                _subscribers[eventType] = new List<Delegate>();
+                _typedSubscribers[eventType] = new List<Delegate>();
             }
 
-            if (!_subscribers[eventType].Contains(listener))
+            if (!_typedSubscribers[eventType].Contains(listener))
             {
-                _subscribers[eventType].Add(listener);
+                _typedSubscribers[eventType].Add(listener);
             }
         }
 
-        /// <summary>
-        /// Unsubscribe a listener method from a specific event type.
-        /// </summary>
         public static void Unsubscribe<T>(Action<T> listener) where T : struct
         {
             if (listener == null) return;
             Type eventType = typeof(T);
 
-            if (_subscribers.ContainsKey(eventType))
+            if (_typedSubscribers.ContainsKey(eventType))
             {
-                _subscribers[eventType].Remove(listener);
-                if (_subscribers[eventType].Count == 0)
+                _typedSubscribers[eventType].Remove(listener);
+                if (_typedSubscribers[eventType].Count == 0)
                 {
-                    _subscribers.Remove(eventType);
+                    _typedSubscribers.Remove(eventType);
                 }
             }
         }
 
-        /// <summary>
-        /// Publish an event to all registered subscribers.
-        /// </summary>
         public static void Publish<T>(T eventData) where T : struct
         {
             Type eventType = typeof(T);
             List<Delegate> listeners;
 
-            if (_subscribers.TryGetValue(eventType, out listeners))
+            if (_typedSubscribers.TryGetValue(eventType, out listeners))
             {
-                // Iterate on a shallow copy to allow safe mutation/unsubscribing inside callbacks
                 var listenersCopy = new List<Delegate>(listeners);
                 for (int i = 0; i < listenersCopy.Count; i++)
                 {
@@ -72,19 +107,82 @@ namespace Scar.Core
                         }
                         catch (Exception ex)
                         {
-                            UnityEngine.Debug.LogError("[EventBus] Exception while invoking handler for " + eventType.Name + ": " + ex.Message);
+                            UnityEngine.Debug.LogError("[EventBus] Exception in typed handler for " + eventType.Name + ": " + ex.Message);
                         }
                     }
                 }
             }
         }
 
+        // ─── String Topic Pub/Sub ─────────────────────────────────────────────────
+
+        public static void Subscribe(string eventName, Action<object> callback)
+        {
+            if (string.IsNullOrEmpty(eventName) || callback == null) return;
+
+            if (!_stringSubscribers.ContainsKey(eventName))
+            {
+                _stringSubscribers[eventName] = new List<Action<object>>();
+            }
+
+            if (!_stringSubscribers[eventName].Contains(callback))
+            {
+                _stringSubscribers[eventName].Add(callback);
+            }
+        }
+
+        public static void Unsubscribe(string eventName, Action<object> callback)
+        {
+            if (string.IsNullOrEmpty(eventName) || callback == null) return;
+
+            if (_stringSubscribers.ContainsKey(eventName))
+            {
+                _stringSubscribers[eventName].Remove(callback);
+                if (_stringSubscribers[eventName].Count == 0)
+                {
+                    _stringSubscribers.Remove(eventName);
+                }
+            }
+        }
+
+        public static void Publish(string eventName, object payload)
+        {
+            if (string.IsNullOrEmpty(eventName)) return;
+            List<Action<object>> listeners;
+
+            if (_stringSubscribers.TryGetValue(eventName, out listeners))
+            {
+                var listenersCopy = new List<Action<object>>(listeners);
+                for (int i = 0; i < listenersCopy.Count; i++)
+                {
+                    var action = listenersCopy[i];
+                    if (action != null)
+                    {
+                        try
+                        {
+                            action.Invoke(payload);
+                        }
+                        catch (Exception ex)
+                        {
+                            UnityEngine.Debug.LogError("[EventBus] Exception in string handler for " + eventName + ": " + ex.Message);
+                        }
+                    }
+                }
+            }
+        }
+
+        public static void Publish(string eventName)
+        {
+            Publish(eventName, null);
+        }
+
         /// <summary>
-        /// Clear all subscriptions (e.g. during scene transitions or application teardown).
+        /// Clear all subscriptions.
         /// </summary>
         public static void ClearAll()
         {
-            _subscribers.Clear();
+            _typedSubscribers.Clear();
+            _stringSubscribers.Clear();
         }
     }
 }

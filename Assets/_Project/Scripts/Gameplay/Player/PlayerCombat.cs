@@ -13,7 +13,7 @@ namespace Scar.Gameplay.Player
         private float _attackCooldownTimer;
         private bool _isAttacking;
 
-        public bool IsAttacking => _isAttacking;
+        public bool IsAttacking { get { return _isAttacking; } }
 
         private void Awake()
         {
@@ -38,6 +38,7 @@ namespace Scar.Gameplay.Player
 
         public bool TryLightAttack()
         {
+            if (stats == null) return false;
             if (_attackCooldownTimer > 0f) return false;
 
             _isAttacking = true;
@@ -48,7 +49,7 @@ namespace Scar.Gameplay.Player
                 meleeHitbox.EnableHitbox();
             }
 
-            EventBus.Instance.Publish(GameEvents.COMBAT_STARTED, new { attacker = gameObject, type = "LIGHT_ATTACK" });
+            EventBus.Instance.Publish(GameEvents.COMBAT_STARTED, "LIGHT_ATTACK");
             return true;
         }
     }

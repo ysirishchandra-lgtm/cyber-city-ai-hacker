@@ -20,12 +20,21 @@ namespace Scar.Gameplay.Combat
         public Vector3 knockbackForce;
         public bool isCritical;
 
-        public DamageData(float amount, DamageType type = DamageType.MELEE, GameObject attacker = null, Vector3 knockbackForce = default)
+        public DamageData(float amount, DamageType type, GameObject attacker, Vector3 knockbackForce)
         {
             this.amount = amount;
             this.type = type;
             this.attacker = attacker;
             this.knockbackForce = knockbackForce;
+            this.isCritical = false;
+        }
+
+        public DamageData(float amount)
+        {
+            this.amount = amount;
+            this.type = DamageType.MELEE;
+            this.attacker = null;
+            this.knockbackForce = Vector3.zero;
             this.isCritical = false;
         }
     }

@@ -10,12 +10,12 @@ namespace Scar.Gameplay.Combat
 
         public static void RaiseDamageDealt(GameObject target, DamageData data)
         {
-            OnDamageDealt?.Invoke(target, data);
+            if (OnDamageDealt != null) OnDamageDealt(target, data);
         }
 
         public static void RaiseTargetKilled(GameObject target, GameObject killer)
         {
-            OnTargetKilled?.Invoke(target, killer);
+            if (OnTargetKilled != null) OnTargetKilled(target, killer);
         }
     }
 }
