@@ -56,13 +56,20 @@ export class PowerSystem {
         this.executeStasisHack(player, enemies, particleEffects);
         break;
 
+      case 'ADAPT':
       default:
-        // Default to destruction nova if path is general
-        this.executeDestructionNova(player, enemies, particleEffects);
+        // ADAPT power: combines protective barrier and directional nova burst
+        this.executeAdaptPower(player, enemies, particleEffects);
         break;
     }
 
     return true;
+  }
+
+  executeAdaptPower(player, enemies, particleEffects) {
+    // ADAPT signature ability: Activates Kinetic Barrier and triggers directional Nova
+    this.executeKineticBarrier(player, enemies, particleEffects);
+    this.executeDestructionNova(player, enemies, particleEffects);
   }
 
   executeDestructionNova(player, enemies, particleEffects) {
