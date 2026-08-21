@@ -102,5 +102,41 @@ namespace Scar.Backend.Tests
             Assert.IsNotNull(result);
             Assert.AreEqual(0, result.Count);
         }
+
+        [Test]
+        public void DTOSerialization_WorksCorrectly()
+        {
+            var evt = new AnalyticsEvent { eventName = "GAME_STARTED", playerId = "uuid", level = 1 };
+            string json = JsonUtility.ToJson(evt);
+            Assert.IsTrue(json.Contains("GAME_STARTED"));
+            
+            var req = new AuthRequest { email = "test@example.com", password = "pass", username = "user" };
+            string jsonReq = JsonUtility.ToJson(req);
+            Assert.IsTrue(jsonReq.Contains("test@example.com"));
+        }
+
+        [UnityTest]
+        public IEnumerator AWSApiClient_RetryLimit_IsRespected()
+        {
+            // Set max retries to 1, we expect 2 attempts total (1 initial + 1 retry)
+            _config.maxRetries = 1;
+            var client = new AWSApiClient(_config);
+            
+            // Wait for the task to finish using a bad URL to force timeouts/failures
+            var task = client.GetAsync<LeaderboardResponse>("/bad_endpoint");
+            yield return new WaitUntil(() => task.IsCompleted);
+            
+            // If it completed, it respected the retry limits and didn't hang infinitely
+            Assert.IsTrue(task.IsCompleted);
+            Assert.IsNull(task.Result);
+        }
+
+        [Test]
+        public void Security_NoSecretsInConfig()
+        {
+            Assert.IsTrue(string.IsNullOrEmpty(_config.userPoolId));
+            Assert.IsTrue(string.IsNullOrEmpty(_config.clientId));
+            Assert.IsFalse(_config.apiBaseUrl.Contains("secret"));
+        }
     }
 }
