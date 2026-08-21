@@ -1,19 +1,22 @@
 /**
  * SCAR — THE LAST CHOICE
- * Enemy AI & Spawner Module (KAUSTUB — GAMEPLAY)
+ * Enemy Entity & Spawner System (KAUSTUB — GAMEPLAY)
+ * 
+ * Integrated with Sirish's KaustubAPI.enemyDefeated().
  */
 
-import { eventBus, GAME_EVENTS } from './events.js';
+import { KaustubAPI } from '../integration/TeamAPI.js';
 
 export const ENEMY_TYPES = {
-  DRONE: 'DRONE',         // Level 1: Weak Cyber Drone
-  ENFORCER: 'ENFORCER',   // Level 2: Cyber Enforcer (Ranged)
-  STALKER: 'STALKER',     // Level 2: Cyber Stalker (Fast Melee)
-  SENTINEL: 'SENTINEL'    // Level 3: Elite Heavy Sentinel
+  DRONE: 'DRONE',
+  ENFORCER: 'ENFORCER',
+  STALKER: 'STALKER',
+  SENTINEL: 'SENTINEL'
 };
 
 export class Enemy {
-  constructor(x, y, type = ENEMY_TYPES.DRONE) {
+  constructor(id, x, y, type = ENEMY_TYPES.DRONE) {
+    this.id = id;
     this.x = x;
     this.y = y;
     this.type = type;
@@ -42,14 +45,14 @@ export class Enemy {
         this.speed = 120;
         this.radius = 18;
         this.damage = 15;
-        this.attackRange = 180; // Ranged
+        this.attackRange = 180;
         this.color = '#ff0055';
         break;
 
       case ENEMY_TYPES.STALKER:
         this.maxHealth = 60;
         this.health = 60;
-        this.speed = 190; // Fast
+        this.speed = 190;
         this.radius = 15;
         this.damage = 18;
         this.attackRange = 35;
@@ -83,7 +86,7 @@ export class Enemy {
       if (this.stasisTimer <= 0) {
         this.inStasis = false;
       }
-      return; // Frozen in place during stasis
+      return;
     }
 
     if (this.attackCooldown > 0) {
@@ -94,12 +97,10 @@ export class Enemy {
     const dy = player.y - this.y;
     const dist = Math.hypot(dx, dy);
 
-    // Chase player if within detection range (450px)
     if (dist < 450 && dist > 10) {
       const moveX = (dx / dist) * this.speed * dt;
       const moveY = (dy / dist) * this.speed * dt;
 
-      // Keep distance if ranged enforcer
       if (this.type === ENEMY_TYPES.ENFORCER && dist < 120) {
         this.x -= moveX * 0.5;
         this.y -= moveY * 0.5;
@@ -109,12 +110,10 @@ export class Enemy {
       }
     }
 
-    // Attack logic
     if (dist <= this.attackRange && this.attackCooldown <= 0) {
       this.attackCooldown = 1.5;
 
       if (this.type === ENEMY_TYPES.ENFORCER) {
-        // Fire laser projectile
         if (projectiles) {
           const angle = Math.atan2(dy, dx);
           projectiles.push({
@@ -130,7 +129,6 @@ export class Enemy {
           });
         }
       } else {
-        // Melee attack
         player.takeDamage(this.damage, powerSystem);
       }
     }
@@ -144,12 +142,8 @@ export class Enemy {
       this.health = 0;
       this.isAlive = false;
 
-      eventBus.emit(GAME_EVENTS.ENEMY_DEFEATED, {
-        type: this.type,
-        x: this.x,
-        y: this.y,
-        source
-      });
+      // Report enemy defeat to TeamAPI (Sirish's GameState and MissionSystem)
+      KaustubAPI.enemyDefeated(this.id);
     }
   }
 
@@ -163,7 +157,6 @@ export class Enemy {
     ctx.translate(screenX, screenY);
 
     if (this.inStasis) {
-      // Glow green stasis ring
       ctx.beginPath();
       ctx.arc(0, 0, this.radius + 6, 0, Math.PI * 2);
       ctx.strokeStyle = '#00ff66';
@@ -173,7 +166,6 @@ export class Enemy {
       ctx.stroke();
     }
 
-    // Body
     ctx.beginPath();
     ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
     ctx.fillStyle = '#111';
@@ -184,7 +176,6 @@ export class Enemy {
     ctx.shadowBlur = 8;
     ctx.stroke();
 
-    // Center Core
     ctx.beginPath();
     ctx.arc(0, 0, 4, 0, Math.PI * 2);
     ctx.fillStyle = this.color;
@@ -192,7 +183,7 @@ export class Enemy {
 
     ctx.restore();
 
-    // Health Bar overhead
+    // Health bar overhead
     const barWidth = 30;
     const barHeight = 4;
     const barX = screenX - barWidth / 2;

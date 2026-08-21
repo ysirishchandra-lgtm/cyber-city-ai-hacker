@@ -1,10 +1,12 @@
 /**
  * SCAR — THE LAST CHOICE
- * Player Entity & Controller (KAUSTUB — GAMEPLAY)
+ * Player Entity Controller (KAUSTUB — GAMEPLAY)
+ * 
+ * Integrated with Sirish's TeamAPI and GameState.
  */
 
-import { eventBus, GAME_EVENTS } from './events.js';
-import { metrics } from './metrics.js';
+import { KaustubAPI } from '../integration/TeamAPI.js';
+import { eventBus, EVENTS } from '../core/EventBus.js';
 
 export class Player {
   constructor(x = 100, y = 100) {
@@ -12,28 +14,40 @@ export class Player {
     this.y = y;
     this.vx = 0;
     this.vy = 0;
-    this.speed = 180; // pixels per second
+    this.speed = 180;
     this.sprintSpeed = 300;
     this.radius = 16;
-    
+
     this.facingAngle = 0;
     this.isMoving = false;
     this.isSprinting = false;
-    
-    this.maxHealth = 100;
-    this.health = 100;
+
     this.stamina = 100;
     this.maxStamina = 100;
-    
+
     this.attackCooldown = 0;
-    this.attackRate = 0.35; // seconds
+    this.attackRate = 0.35;
     this.isAttacking = false;
     this.attackAnimationTimer = 0;
-    
-    this.moveDistanceAccumulator = 0;
+
+    this.lastEmittedX = x;
+    this.lastEmittedY = y;
+  }
+
+  reset(x = 100, y = 100) {
+    this.x = x;
+    this.y = y;
+    this.vx = 0;
+    this.vy = 0;
+    this.stamina = 100;
+    this.attackCooldown = 0;
+    this.isAttacking = false;
+    KaustubAPI.updatePosition(x, y);
   }
 
   handleInput(keys, mousePos, camera, dt) {
+    if (KaustubAPI.isChoiceBlocking()) return;
+
     let dx = 0;
     let dy = 0;
 
@@ -42,7 +56,6 @@ export class Player {
     if (keys['a'] || keys['A'] || keys['ArrowLeft']) dx -= 1;
     if (keys['d'] || keys['D'] || keys['ArrowRight']) dx += 1;
 
-    // Normalize diagonal movement
     if (dx !== 0 && dy !== 0) {
       dx *= 0.7071;
       dy *= 0.7071;
@@ -52,9 +65,9 @@ export class Player {
     const currentSpeed = this.isSprinting ? this.sprintSpeed : this.speed;
 
     if (this.isSprinting) {
-      this.stamina = Math.max(0, this.stamina - 25 * dt);
+      this.stamina = Math.max(0, this.stamina - 30 * dt);
     } else {
-      this.stamina = Math.min(this.maxStamina, this.stamina + 15 * dt);
+      this.stamina = Math.min(this.maxStamina, this.stamina + 20 * dt);
     }
 
     this.vx = dx * currentSpeed;
@@ -63,19 +76,20 @@ export class Player {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    const moveDist = Math.hypot(this.vx * dt, this.vy * dt);
-    if (moveDist > 0) {
+    if (dx !== 0 || dy !== 0) {
       this.isMoving = true;
-      this.moveDistanceAccumulator += moveDist;
-      if (this.moveDistanceAccumulator > 80) {
-        this.moveDistanceAccumulator = 0;
-        eventBus.emit(GAME_EVENTS.PLAYER_MOVED, { x: Math.round(this.x), y: Math.round(this.y) });
+      // Sync position to Sirish's GameState if moved significantly
+      const distMoved = Math.hypot(this.x - this.lastEmittedX, this.y - this.lastEmittedY);
+      if (distMoved > 25) {
+        this.lastEmittedX = this.x;
+        this.lastEmittedY = this.y;
+        KaustubAPI.updatePosition(Math.round(this.x), Math.round(this.y));
       }
     } else {
       this.isMoving = false;
     }
 
-    // Aim towards mouse pointer in world space
+    // Facing angle aiming
     if (mousePos && camera) {
       const worldMouseX = mousePos.x + camera.x;
       const worldMouseY = mousePos.y + camera.y;
@@ -97,22 +111,19 @@ export class Player {
   }
 
   attack(enemies, particleEffects) {
-    if (this.attackCooldown > 0) return false;
+    if (this.attackCooldown > 0 || KaustubAPI.isChoiceBlocking()) return false;
 
     this.attackCooldown = this.attackRate;
     this.isAttacking = true;
     this.attackAnimationTimer = 0.2;
 
-    eventBus.emit(GAME_EVENTS.COMBAT_STARTED, { source: 'player' });
-
-    const attackRange = 70;
+    const attackRange = 75;
     const attackDamage = 25;
-    const attackArc = Math.PI / 2; // 90 degree cone
+    const attackArc = Math.PI / 2;
 
     let hitAny = false;
 
     if (particleEffects) {
-      // Melee slash visual effect
       particleEffects.push({
         type: 'slash',
         x: this.x + Math.cos(this.facingAngle) * 30,
@@ -138,9 +149,9 @@ export class Player {
             enemy.takeDamage(attackDamage, 'MELEE');
             hitAny = true;
             
-            // Pushback
-            enemy.x += Math.cos(this.facingAngle) * 20;
-            enemy.y += Math.sin(this.facingAngle) * 20;
+            // Pushback enemy
+            enemy.x += Math.cos(this.facingAngle) * 25;
+            enemy.y += Math.sin(this.facingAngle) * 25;
           }
         }
       }
@@ -150,19 +161,16 @@ export class Player {
   }
 
   takeDamage(amount, powerSystem) {
-    // If protection shield is active, block/mitigate damage
     if (powerSystem && powerSystem.isShieldActive) {
-      metrics.recordAction('protective', 'Absorbed attack with Kinetic Barrier');
+      // Shield absorbs damage completely
+      eventBus.emit(EVENTS.CHOICE_MADE, {
+        type: 'PROTECTIVE',
+        description: 'Absorbed attack with Kinetic Barrier'
+      });
       return 0;
     }
 
-    this.health = Math.max(0, this.health - amount);
-    metrics.recordDamage(amount);
-
-    if (this.health <= 0) {
-      eventBus.emit(GAME_EVENTS.GAME_OVER, { reason: 'PLAYER_DIED' });
-    }
-
+    KaustubAPI.playerTakeDamage(amount);
     return amount;
   }
 
@@ -173,7 +181,7 @@ export class Player {
     ctx.save();
     ctx.translate(screenX, screenY);
 
-    // Render Facing Indicator / Direction Cone
+    // Aim arc
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.arc(0, 0, 35, this.facingAngle - Math.PI / 6, this.facingAngle + Math.PI / 6);
@@ -181,7 +189,7 @@ export class Player {
     ctx.fillStyle = 'rgba(0, 243, 255, 0.15)';
     ctx.fill();
 
-    // Render Melee Slash Animation
+    // Slash visual
     if (this.isAttacking) {
       ctx.beginPath();
       ctx.arc(0, 0, 45, this.facingAngle - Math.PI / 4, this.facingAngle + Math.PI / 4);
@@ -192,10 +200,8 @@ export class Player {
       ctx.stroke();
     }
 
-    // Render Player Body (Cyberpunk Runner)
+    // Body
     ctx.rotate(this.facingAngle);
-
-    // Body base
     ctx.beginPath();
     ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
     ctx.fillStyle = '#0a0a14';
@@ -206,7 +212,7 @@ export class Player {
     ctx.shadowBlur = 12;
     ctx.stroke();
 
-    // Visor / Cyber Eye Line
+    // Visor line
     ctx.beginPath();
     ctx.moveTo(0, -6);
     ctx.lineTo(12, 0);
@@ -217,18 +223,5 @@ export class Player {
     ctx.fill();
 
     ctx.restore();
-
-    // Health Bar overhead
-    const barWidth = 40;
-    const barHeight = 5;
-    const barX = screenX - barWidth / 2;
-    const barY = screenY - this.radius - 14;
-
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(barX, barY, barWidth, barHeight);
-
-    const hpRatio = this.health / this.maxHealth;
-    ctx.fillStyle = hpRatio > 0.5 ? '#00ff66' : hpRatio > 0.25 ? '#ffb700' : '#ff0055';
-    ctx.fillRect(barX, barY, barWidth * hpRatio, barHeight);
   }
 }

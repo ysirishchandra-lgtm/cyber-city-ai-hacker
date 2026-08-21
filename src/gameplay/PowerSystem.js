@@ -2,68 +2,19 @@
  * SCAR — THE LAST CHOICE
  * Power System Module (KAUSTUB — GAMEPLAY)
  * 
- * Implements 3 distinct power paths:
- * 1. AGGRESSIVE -> DESTRUCTION (Destruction Nova)
- * 2. PROTECTIVE -> PROTECTION (Kinetic Barrier)
- * 3. STRATEGIC -> CONTROL (Stasis Hack)
+ * Integrated with Sirish's POWER_PATH enum and GameState.
  */
 
-import { eventBus, GAME_EVENTS } from './events.js';
-import { metrics } from './metrics.js';
-
-export const POWER_PATHS = {
-  NONE: 'NONE',
-  DESTRUCTION: 'DESTRUCTION',
-  PROTECTION: 'PROTECTION',
-  CONTROL: 'CONTROL'
-};
+import { KaustubAPI } from '../integration/TeamAPI.js';
+import { eventBus, EVENTS } from '../core/EventBus.js';
+import { POWER_PATH, gameState } from '../core/GameState.js';
 
 export class PowerSystem {
   constructor() {
-    this.currentPath = POWER_PATHS.NONE;
-    this.unlocked = false;
     this.cooldownTimer = 0;
-    this.maxCooldown = 5.0; // seconds
+    this.maxCooldown = 5.0;
     this.activeDuration = 0;
     this.isShieldActive = false;
-  }
-
-  awakenPower(dominantPath) {
-    this.currentPath = dominantPath || POWER_PATHS.DESTRUCTION;
-    this.unlocked = true;
-    this.cooldownTimer = 0;
-    
-    eventBus.emit(GAME_EVENTS.POWER_AWAKENED, {
-      path: this.currentPath,
-      name: this.getPowerName(),
-      description: this.getPowerDescription()
-    });
-  }
-
-  getPowerName() {
-    switch (this.currentPath) {
-      case POWER_PATHS.DESTRUCTION:
-        return 'DESTRUCTION NOVA';
-      case POWER_PATHS.PROTECTION:
-        return 'KINETIC BARRIER';
-      case POWER_PATHS.CONTROL:
-        return 'STASIS HACK';
-      default:
-        return 'DORMANT';
-    }
-  }
-
-  getPowerDescription() {
-    switch (this.currentPath) {
-      case POWER_PATHS.DESTRUCTION:
-        return 'Unleashes a devasting cyber-energy explosion dealing heavy damage to all surrounding hostiles.';
-      case POWER_PATHS.PROTECTION:
-        return 'Deploys an impenetrable kinetic forcefield, absorbing damage and knocking back enemies.';
-      case POWER_PATHS.CONTROL:
-        return 'Emits an EMP pulse that freezes all hostiles in stasis and disables automated defenses.';
-      default:
-        return 'No awakened powers yet. Seek out the Scar.';
-    }
   }
 
   update(dt) {
@@ -79,24 +30,35 @@ export class PowerSystem {
   }
 
   canActivate() {
-    return this.unlocked && this.cooldownTimer <= 0;
+    const unlocked = gameState.hasPower();
+    return unlocked && this.cooldownTimer <= 0;
   }
 
   activate(player, enemies, particleEffects) {
     if (!this.canActivate()) return false;
 
+    const path = KaustubAPI.getPowerPath();
     this.cooldownTimer = this.maxCooldown;
-    metrics.recordPowerUse(this.getPowerName());
 
-    switch (this.currentPath) {
-      case POWER_PATHS.DESTRUCTION:
+    switch (path) {
+      case POWER_PATH.AGGRESSIVE:
+      case 'DESTRUCTION':
         this.executeDestructionNova(player, enemies, particleEffects);
         break;
-      case POWER_PATHS.PROTECTION:
+
+      case POWER_PATH.PROTECTIVE:
+      case 'PROTECTION':
         this.executeKineticBarrier(player, enemies, particleEffects);
         break;
-      case POWER_PATHS.CONTROL:
+
+      case POWER_PATH.STRATEGIC:
+      case 'CONTROL':
         this.executeStasisHack(player, enemies, particleEffects);
+        break;
+
+      default:
+        // Default to destruction nova if path is general
+        this.executeDestructionNova(player, enemies, particleEffects);
         break;
     }
 
@@ -107,7 +69,6 @@ export class PowerSystem {
     const novaRadius = 180;
     const novaDamage = 75;
 
-    // Visual effect
     if (particleEffects) {
       particleEffects.push({
         type: 'nova',
@@ -121,7 +82,6 @@ export class PowerSystem {
       });
     }
 
-    // Hit hostiles in radius
     enemies.forEach(enemy => {
       if (enemy.isAlive) {
         const dx = enemy.x - player.x;
@@ -129,7 +89,6 @@ export class PowerSystem {
         const dist = Math.hypot(dx, dy);
         if (dist <= novaRadius) {
           enemy.takeDamage(novaDamage, 'DESTRUCTION');
-          // Push back
           if (dist > 0) {
             enemy.x += (dx / dist) * 60;
             enemy.y += (dy / dist) * 60;
@@ -138,11 +97,11 @@ export class PowerSystem {
       }
     });
 
-    metrics.recordAction('aggressive', 'Activated Destruction Nova');
+    gameState.recordChoice('POWER_USE_AGGRESSIVE', 'Activated Destruction Nova', 'AGGRESSIVE');
   }
 
   executeKineticBarrier(player, enemies, particleEffects) {
-    this.activeDuration = 3.5; // 3.5 sec shield
+    this.activeDuration = 3.5;
     this.isShieldActive = true;
 
     if (particleEffects) {
@@ -156,7 +115,6 @@ export class PowerSystem {
       });
     }
 
-    // Knockback nearby enemies
     enemies.forEach(enemy => {
       if (enemy.isAlive) {
         const dx = enemy.x - player.x;
@@ -169,7 +127,7 @@ export class PowerSystem {
       }
     });
 
-    metrics.recordAction('protective', 'Activated Kinetic Barrier');
+    gameState.recordChoice('POWER_USE_PROTECTIVE', 'Activated Kinetic Barrier', 'PROTECTIVE');
   }
 
   executeStasisHack(player, enemies, particleEffects) {
@@ -191,11 +149,11 @@ export class PowerSystem {
       if (enemy.isAlive) {
         const dist = Math.hypot(enemy.x - player.x, enemy.y - player.y);
         if (dist <= stasisRadius) {
-          enemy.applyStasis(4.0); // Freeze for 4 seconds
+          enemy.applyStasis(4.0);
         }
       }
     });
 
-    metrics.recordAction('strategic', 'Activated Stasis Hack');
+    gameState.recordChoice('POWER_USE_STRATEGIC', 'Activated Stasis Hack', 'STRATEGIC');
   }
 }

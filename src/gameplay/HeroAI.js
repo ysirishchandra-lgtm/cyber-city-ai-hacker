@@ -3,11 +3,12 @@
  * Hero AI Boss & State Machine (KAUSTUB — GAMEPLAY)
  * 
  * States: OBSERVE, FOLLOW, CONFRONT, COUNTER, RETREAT
- * Behavior dynamically adapts to player's power path (DESTRUCTION / PROTECTION / CONTROL)
+ * Integrated with Sirish's TeamAPI, EventBus, and GameState.
  */
 
-import { eventBus, GAME_EVENTS } from './events.js';
-import { metrics } from './metrics.js';
+import { KaustubAPI } from '../integration/TeamAPI.js';
+import { eventBus, EVENTS } from '../core/EventBus.js';
+import { POWER_PATH } from '../core/GameState.js';
 
 export const HERO_STATES = {
   OBSERVE: 'OBSERVE',
@@ -22,17 +23,17 @@ export class HeroAI {
     this.x = x;
     this.y = y;
     this.state = HERO_STATES.OBSERVE;
-    
+
     this.maxHealth = 300;
     this.health = 300;
     this.speed = 140;
     this.radius = 24;
-    
+
     this.isAlive = true;
     this.inFinalBattle = false;
     this.attackCooldown = 0;
     this.stateTimer = 0;
-    
+
     this.dialogueText = '';
     this.dialogueTimer = 0;
   }
@@ -41,21 +42,22 @@ export class HeroAI {
     if (this.state === HERO_STATES.OBSERVE) {
       this.state = HERO_STATES.FOLLOW;
       this.showDialogue("I sense a new presence... Someone born without a scar.");
-      eventBus.emit(GAME_EVENTS.HERO_DETECTED, { heroState: this.state });
+      KaustubAPI.heroEncountered();
+      eventBus.emit(EVENTS.HERO_DETECTED_PLAYER, { heroState: this.state });
     }
   }
 
   triggerConfrontation() {
     this.state = HERO_STATES.CONFRONT;
     this.showDialogue("Your choices reverberate through the city grid. Stop before it's too late!");
-    eventBus.emit(GAME_EVENTS.HERO_CONFRONTATION, { heroState: this.state });
+    eventBus.emit(EVENTS.HERO_ENCOUNTER, { heroState: this.state });
   }
 
   startFinalBattle() {
     this.inFinalBattle = true;
     this.state = HERO_STATES.COUNTER;
     this.showDialogue("If you will not turn back, I will end this myself!");
-    eventBus.emit(GAME_EVENTS.FINAL_BATTLE_STARTED, { heroState: this.state });
+    eventBus.emit(EVENTS.FINAL_BATTLE_STARTED, { heroState: this.state });
   }
 
   showDialogue(text, duration = 4.0) {
@@ -73,20 +75,20 @@ export class HeroAI {
     const dy = player.y - this.y;
     const dist = Math.hypot(dx, dy);
 
-    // Adapt combat parameters based on dominant player path
-    const playerPath = metrics.dominantPath;
+    // Adapt combat parameters based on actual player power path
+    const playerPath = KaustubAPI.getPowerPath();
     let aggressionFactor = 1.0;
     let attackDelay = 1.6;
 
-    if (playerPath === 'DESTRUCTION') {
+    if (playerPath === POWER_PATH.AGGRESSIVE || playerPath === 'DESTRUCTION') {
       // Aggressive player -> Hero becomes aggressive
       aggressionFactor = 1.5;
       attackDelay = 1.0;
-    } else if (playerPath === 'PROTECTION') {
-      // Protective player -> Hero becomes hesitant/uncertain
+    } else if (playerPath === POWER_PATH.PROTECTIVE || playerPath === 'PROTECTION') {
+      // Protective player -> Hero becomes hesitant
       aggressionFactor = 0.8;
       attackDelay = 2.2;
-    } else if (playerPath === 'CONTROL') {
+    } else if (playerPath === POWER_PATH.STRATEGIC || playerPath === 'CONTROL') {
       // Strategic player -> Hero becomes cautious
       aggressionFactor = 1.1;
       attackDelay = 1.8;
@@ -94,14 +96,12 @@ export class HeroAI {
 
     switch (this.state) {
       case HERO_STATES.OBSERVE:
-        // Hover at a distance watching player
         if (dist < 350) {
           this.detectPlayer(player);
         }
         break;
 
       case HERO_STATES.FOLLOW:
-        // Keep a distance of 200px
         if (dist > 220) {
           this.x += (dx / dist) * (this.speed * 0.7) * dt;
           this.y += (dy / dist) * (this.speed * 0.7) * dt;
@@ -112,7 +112,6 @@ export class HeroAI {
         break;
 
       case HERO_STATES.CONFRONT:
-        // Move to player position for battle initialization
         if (dist > 160) {
           this.x += (dx / dist) * this.speed * dt;
           this.y += (dy / dist) * this.speed * dt;
@@ -120,17 +119,15 @@ export class HeroAI {
         break;
 
       case HERO_STATES.COUNTER:
-        // Active Boss combat state
-        if (dist > 80 && playerPath !== 'CONTROL') {
+        if (dist > 80 && playerPath !== POWER_PATH.STRATEGIC) {
           this.x += (dx / dist) * (this.speed * aggressionFactor) * dt;
           this.y += (dy / dist) * (this.speed * aggressionFactor) * dt;
-        } else if (playerPath === 'CONTROL' && dist < 180) {
+        } else if (playerPath === POWER_PATH.STRATEGIC && dist < 180) {
           // Keep tactical distance against Strategic control player
           this.x -= (dx / dist) * this.speed * dt;
           this.y -= (dy / dist) * this.speed * dt;
         }
 
-        // Hero Attack
         if (dist <= 200 && this.attackCooldown <= 0) {
           this.attackCooldown = attackDelay;
           this.executeHeroAttack(player, dx, dy, dist, projectiles, particleEffects, playerPath);
@@ -138,7 +135,6 @@ export class HeroAI {
         break;
 
       case HERO_STATES.RETREAT:
-        // Reposition briefly
         this.x -= (dx / dist) * (this.speed * 1.4) * dt;
         this.y -= (dy / dist) * (this.speed * 1.4) * dt;
 
@@ -155,8 +151,8 @@ export class HeroAI {
     if (projectiles) {
       const angle = Math.atan2(dy, dx);
 
-      if (playerPath === 'DESTRUCTION') {
-        // Triple spread attack against Destruction player
+      if (playerPath === POWER_PATH.AGGRESSIVE || playerPath === 'DESTRUCTION') {
+        // Triple beam burst against Destruction player
         for (let offset of [-0.3, 0, 0.3]) {
           projectiles.push({
             x: this.x,
@@ -171,7 +167,7 @@ export class HeroAI {
           });
         }
       } else {
-        // Single focused beam blast
+        // Focused laser beam
         projectiles.push({
           x: this.x,
           y: this.y,
@@ -192,7 +188,6 @@ export class HeroAI {
 
     this.health -= amount;
 
-    // Trigger retreat state if chunked
     if (amount >= 35 && this.state === HERO_STATES.COUNTER) {
       this.state = HERO_STATES.RETREAT;
       this.stateTimer = 0;
@@ -202,8 +197,8 @@ export class HeroAI {
       this.health = 0;
       this.isAlive = false;
 
-      eventBus.emit(GAME_EVENTS.FINAL_BATTLE_COMPLETED, {
-        heroResult: 'DEFEATED_HERO',
+      eventBus.emit(EVENTS.FINAL_BATTLE_STARTED, {
+        heroDefeated: true,
         health: 0
       });
     }
@@ -218,14 +213,12 @@ export class HeroAI {
     ctx.save();
     ctx.translate(screenX, screenY);
 
-    // Hero Aura
     ctx.beginPath();
     ctx.arc(0, 0, this.radius + 8, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(0, 243, 255, 0.4)';
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Hero Body (Glowing White/Cyan Champion)
     ctx.beginPath();
     ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
     ctx.fillStyle = '#ffffff';
@@ -236,7 +229,6 @@ export class HeroAI {
     ctx.shadowBlur = 18;
     ctx.stroke();
 
-    // Emblem Core
     ctx.beginPath();
     ctx.arc(0, 0, 8, 0, Math.PI * 2);
     ctx.fillStyle = '#00f3ff';
@@ -244,7 +236,6 @@ export class HeroAI {
 
     ctx.restore();
 
-    // Render Dialogue Bubble overhead if active
     if (this.dialogueTimer > 0 && this.dialogueText) {
       ctx.font = '14px "Share Tech Mono", monospace';
       const textWidth = ctx.measureText(this.dialogueText).width;
@@ -261,7 +252,6 @@ export class HeroAI {
       ctx.fillText(this.dialogueText, bubbleX + 10, bubbleY + 18);
     }
 
-    // Health Bar (Boss Bar)
     if (this.inFinalBattle) {
       const barWidth = 60;
       const barHeight = 6;

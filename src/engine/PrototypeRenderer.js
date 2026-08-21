@@ -427,11 +427,139 @@ export class PrototypeRenderer {
   // ─── Game World Render (placeholder for Kaustub's scenes) ──────────────────
 
   render(state, dt) {
-    // Only render game world during active levels
-    // Kaustub's engine will override this with actual game rendering
-    // This is a minimal HUD overlay
     if (!this._currentChoice && !this._currentDialogue && !this._finalChoiceOptions && !this._showEndingScreen) {
+      this._renderGameplay(state);
       this._renderHUD(state);
+    }
+  }
+
+  _renderGameplay(state) {
+    const gs = window.__SCAR_GAMEPLAY_STATE__;
+    if (!gs || !this._ctx) return;
+    const ctx = this._ctx;
+    const cam = gs.camera || { x: 0, y: 0 };
+
+    // Clear background grid
+    ctx.fillStyle = '#0a0a14';
+    ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
+
+    // Draw grid lines
+    const gridSize = 60;
+    const startX = -(cam.x % gridSize);
+    const startY = -(cam.y % gridSize);
+    ctx.strokeStyle = 'rgba(0, 243, 255, 0.05)';
+    ctx.lineWidth = 1;
+
+    for (let x = startX; x < this._canvas.width; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, this._canvas.height);
+      ctx.stroke();
+    }
+    for (let y = startY; y < this._canvas.height; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(this._canvas.width, y);
+      ctx.stroke();
+    }
+
+    // Draw Particles
+    if (gs.particles) {
+      gs.particles.forEach(pt => {
+        const sx = pt.x - cam.x;
+        const sy = pt.y - cam.y;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(sx, sy, pt.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = pt.color;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = pt.color;
+        ctx.shadowBlur = 10;
+        ctx.stroke();
+        ctx.restore();
+      });
+    }
+
+    // Draw Projectiles
+    if (gs.projectiles) {
+      gs.projectiles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x - cam.x, p.y - cam.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 8;
+        ctx.fill();
+      });
+    }
+
+    // Draw Enemies
+    if (gs.enemies) {
+      gs.enemies.forEach(e => {
+        const sx = e.x - cam.x;
+        const sy = e.y - cam.y;
+        ctx.save();
+        ctx.translate(sx, sy);
+        if (e.inStasis) {
+          ctx.beginPath();
+          ctx.arc(0, 0, 20, 0, Math.PI * 2);
+          ctx.strokeStyle = '#00ff66';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.arc(0, 0, 16, 0, Math.PI * 2);
+        ctx.fillStyle = '#111';
+        ctx.fill();
+        ctx.strokeStyle = e.color || '#ff0055';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = e.color || '#ff0055';
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+        ctx.restore();
+      });
+    }
+
+    // Draw Hero AI
+    if (gs.hero && gs.hero.isAlive) {
+      const sx = gs.hero.x - cam.x;
+      const sy = gs.hero.y - cam.y;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.beginPath();
+      ctx.arc(0, 0, 24, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#00ffff';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#00ffff';
+      ctx.shadowBlur = 15;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Draw Player
+    if (gs.player) {
+      const sx = gs.player.x - cam.x;
+      const sy = gs.player.y - cam.y;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(gs.player.facingAngle);
+      ctx.beginPath();
+      ctx.arc(0, 0, 16, 0, Math.PI * 2);
+      ctx.fillStyle = '#0a0a14';
+      ctx.fill();
+      ctx.strokeStyle = '#00f3ff';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#00f3ff';
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, -6);
+      ctx.lineTo(12, 0);
+      ctx.lineTo(0, 6);
+      ctx.fillStyle = '#ff0055';
+      ctx.fill();
+      ctx.restore();
     }
   }
 
