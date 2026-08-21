@@ -32,6 +32,7 @@ export class KaustubGameplayEngine {
     this.mousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
     this.currentScene = 'BOOT';
+    this.levelTransitionTimer = 0;
     this._setupInputs();
   }
 
@@ -74,6 +75,7 @@ export class KaustubGameplayEngine {
     this.enemies = [];
     this.projectiles = [];
     this.particleEffects = [];
+    this.levelTransitionTimer = 0;
   }
 
   setScene(sceneName) {
@@ -99,7 +101,6 @@ export class KaustubGameplayEngine {
 
   setupLevel1() {
     this.player.reset(200, 300);
-    // Level 1: Weak drones, zero powers
     this.enemies = [
       new Enemy('drone_1', 500, 200, ENEMY_TYPES.DRONE),
       new Enemy('drone_2', 600, 400, ENEMY_TYPES.DRONE),
@@ -111,7 +112,6 @@ export class KaustubGameplayEngine {
   setupLevel2() {
     this.player.x = 200;
     this.player.y = 300;
-    // Level 2: Enforcers & Stalkers
     this.enemies = [
       new Enemy('enforcer_1', 600, 200, ENEMY_TYPES.ENFORCER),
       new Enemy('stalker_1', 750, 400, ENEMY_TYPES.STALKER),
@@ -127,7 +127,6 @@ export class KaustubGameplayEngine {
   setupLevel3() {
     this.player.x = 200;
     this.player.y = 300;
-    // Level 3: Elite Heavy Sentinels
     this.enemies = [
       new Enemy('sentinel_1', 550, 250, ENEMY_TYPES.SENTINEL),
       new Enemy('sentinel_2', 750, 450, ENEMY_TYPES.SENTINEL),
@@ -138,7 +137,7 @@ export class KaustubGameplayEngine {
   }
 
   setupFinalBattle() {
-    this.enemies = []; // Clear minion enemies
+    this.enemies = [];
     this.hero.startFinalBattle();
   }
 
@@ -150,7 +149,7 @@ export class KaustubGameplayEngine {
     // Update Player
     this.player.handleInput(this.keys, this.mousePos, this.camera, dt);
 
-    // Smooth Camera lerp
+    // Camera follow
     const targetCamX = this.player.x - window.innerWidth / 2;
     const targetCamY = this.player.y - window.innerHeight / 2;
     this.camera.x += (targetCamX - this.camera.x) * 0.1;
@@ -165,18 +164,21 @@ export class KaustubGameplayEngine {
       }
     });
 
-    // Check Level 1 completion & trigger Scar Awakening
-    if (aliveCount === 0 && (this.currentScene === 'LEVEL_1' || this.currentScene === 'CITY_NORMAL')) {
-      if (!gameState.hasPower()) {
-        gameState.receiveScar();
-        const dominantPath = gameState._getDominantPath(gameState.get()) || POWER_PATH.AGGRESSIVE;
-        gameState.awakePower(dominantPath);
-        eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
+    // Level progression trigger logic
+    if (aliveCount === 0) {
+      if (this.currentScene === 'LEVEL_1' || this.currentScene === 'CITY_NORMAL') {
+        if (!gameState.hasPower()) {
+          gameState.receiveScar();
+          const stateData = gameState.get();
+          const dominantPath = gameState._getDominantPath(stateData) || POWER_PATH.AGGRESSIVE;
+          gameState.awakePower(dominantPath);
+          eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
+        }
+      } else if (this.currentScene === 'LEVEL_2') {
+        eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 2 });
+      } else if (this.currentScene === 'LEVEL_3') {
+        eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 3 });
       }
-    } else if (aliveCount === 0 && this.currentScene === 'LEVEL_2') {
-      eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 2 });
-    } else if (aliveCount === 0 && this.currentScene === 'LEVEL_3') {
-      eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 3 });
     }
 
     // Update Hero AI
@@ -184,7 +186,7 @@ export class KaustubGameplayEngine {
       this.hero.update(dt, this.player, this.powerSystem, this.projectiles, this.particleEffects);
 
       if (this.currentScene === 'FINAL_BATTLE' && !this.hero.isAlive) {
-        gameState.triggerEnding('HERO');
+        gameState.completeMission('M3_FINAL_BATTLE');
       }
     }
 
@@ -214,7 +216,7 @@ export class KaustubGameplayEngine {
       return pt.life > 0;
     });
 
-    // Export internal render state for Ashwidha's renderer or PrototypeRenderer
+    // Export render state
     this.exportRenderState();
   }
 

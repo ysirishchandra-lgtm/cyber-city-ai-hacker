@@ -2,11 +2,12 @@
  * SCAR — THE LAST CHOICE
  * Player Entity Controller (KAUSTUB — GAMEPLAY)
  * 
- * Integrated with Sirish's TeamAPI and GameState.
+ * Integrated with Sirish's TeamAPI, EventBus, and GameState.
  */
 
 import { KaustubAPI } from '../integration/TeamAPI.js';
 import { eventBus, EVENTS } from '../core/EventBus.js';
+import { gameState } from '../core/GameState.js';
 
 export class Player {
   constructor(x = 100, y = 100) {
@@ -32,6 +33,7 @@ export class Player {
 
     this.lastEmittedX = x;
     this.lastEmittedY = y;
+    this.sprintDodgeTimer = 0;
   }
 
   reset(x = 100, y = 100) {
@@ -42,6 +44,7 @@ export class Player {
     this.stamina = 100;
     this.attackCooldown = 0;
     this.isAttacking = false;
+    this.sprintDodgeTimer = 0;
     KaustubAPI.updatePosition(x, y);
   }
 
@@ -66,8 +69,14 @@ export class Player {
 
     if (this.isSprinting) {
       this.stamina = Math.max(0, this.stamina - 30 * dt);
+      this.sprintDodgeTimer += dt;
+      if (this.sprintDodgeTimer > 1.5) {
+        this.sprintDodgeTimer = 0;
+        gameState.recordChoice('DODGE_TACTICAL', 'Sprinted to outmaneuver target', 'STRATEGIC');
+      }
     } else {
       this.stamina = Math.min(this.maxStamina, this.stamina + 20 * dt);
+      this.sprintDodgeTimer = 0;
     }
 
     this.vx = dx * currentSpeed;
@@ -78,7 +87,6 @@ export class Player {
 
     if (dx !== 0 || dy !== 0) {
       this.isMoving = true;
-      // Sync position to Sirish's GameState if moved significantly
       const distMoved = Math.hypot(this.x - this.lastEmittedX, this.y - this.lastEmittedY);
       if (distMoved > 25) {
         this.lastEmittedX = this.x;
@@ -89,7 +97,6 @@ export class Player {
       this.isMoving = false;
     }
 
-    // Facing angle aiming
     if (mousePos && camera) {
       const worldMouseX = mousePos.x + camera.x;
       const worldMouseY = mousePos.y + camera.y;
@@ -134,6 +141,9 @@ export class Player {
       });
     }
 
+    // Record Aggressive choice action influence in GameState
+    gameState.recordChoice('COMBAT_MELEE_ATTACK', 'Executed direct melee assault', 'AGGRESSIVE');
+
     enemies.forEach(enemy => {
       if (enemy.isAlive) {
         const dx = enemy.x - this.x;
@@ -149,7 +159,6 @@ export class Player {
             enemy.takeDamage(attackDamage, 'MELEE');
             hitAny = true;
             
-            // Pushback enemy
             enemy.x += Math.cos(this.facingAngle) * 25;
             enemy.y += Math.sin(this.facingAngle) * 25;
           }
@@ -162,15 +171,12 @@ export class Player {
 
   takeDamage(amount, powerSystem) {
     if (powerSystem && powerSystem.isShieldActive) {
-      // Shield absorbs damage completely
-      eventBus.emit(EVENTS.CHOICE_MADE, {
-        type: 'PROTECTIVE',
-        description: 'Absorbed attack with Kinetic Barrier'
-      });
+      gameState.recordChoice('SHIELD_ABSORB', 'Absorbed damage with Kinetic Barrier', 'PROTECTIVE');
       return 0;
     }
 
     KaustubAPI.playerTakeDamage(amount);
+    gameState.recordChoice('TAKE_DAMAGE_SURVIVAL', 'Endured enemy damage', 'PROTECTIVE');
     return amount;
   }
 
@@ -181,7 +187,6 @@ export class Player {
     ctx.save();
     ctx.translate(screenX, screenY);
 
-    // Aim arc
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.arc(0, 0, 35, this.facingAngle - Math.PI / 6, this.facingAngle + Math.PI / 6);
@@ -189,7 +194,6 @@ export class Player {
     ctx.fillStyle = 'rgba(0, 243, 255, 0.15)';
     ctx.fill();
 
-    // Slash visual
     if (this.isAttacking) {
       ctx.beginPath();
       ctx.arc(0, 0, 45, this.facingAngle - Math.PI / 4, this.facingAngle + Math.PI / 4);
@@ -200,7 +204,6 @@ export class Player {
       ctx.stroke();
     }
 
-    // Body
     ctx.rotate(this.facingAngle);
     ctx.beginPath();
     ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
@@ -212,7 +215,6 @@ export class Player {
     ctx.shadowBlur = 12;
     ctx.stroke();
 
-    // Visor line
     ctx.beginPath();
     ctx.moveTo(0, -6);
     ctx.lineTo(12, 0);
