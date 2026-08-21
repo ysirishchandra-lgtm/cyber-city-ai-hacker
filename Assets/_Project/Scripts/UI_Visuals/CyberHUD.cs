@@ -36,6 +36,7 @@ namespace Scar.UI
         [SerializeField] private Image _powerCooldownFill;
         [SerializeField] private TextMeshProUGUI _powerNameText;
         [SerializeField] private TextMeshProUGUI _powerStatusText;
+        [SerializeField] private TextMeshProUGUI _powerLevelText;
 
         [Header("Combat Telemetry & Score Counter")]
         [SerializeField] private TextMeshProUGUI _scoreText;
@@ -49,6 +50,13 @@ namespace Scar.UI
         [SerializeField] private Color _normalThreatColor = new Color(0f, 0.95f, 1f, 1f); // Cyan
         [SerializeField] private Color _highThreatColor = new Color(1f, 0.7f, 0f, 1f);    // Amber
         [SerializeField] private Color _bossThreatColor = new Color(1f, 0f, 0.2f, 1f);    // Crimson
+
+        [Header("Deadline Timer")]
+        [SerializeField] private TextMeshProUGUI _deadlineTimerText;
+        [SerializeField] private Color _timerNormalColor = Color.white;
+        [SerializeField] private Color _timerWarningColor = Color.red;
+        private float _currentDeadline = 480f; // 8 mins default
+        private bool _isTimerActive = false;
 
         private float _targetHealth = 100f;
         private float _currentGhostHealth = 100f;
@@ -70,6 +78,41 @@ namespace Scar.UI
         private void Start()
         {
             InitializeHUD();
+        }
+
+        private void Update()
+        {
+            UpdateGhostHealth(Time.deltaTime);
+            UpdateStaminaFromGameplay();
+            UpdateDeadlineTimer(Time.deltaTime);
+        }
+
+        private void UpdateDeadlineTimer(float dt)
+        {
+            if (!_isTimerActive || _deadlineTimerText == null) return;
+            
+            _currentDeadline -= dt;
+            if (_currentDeadline <= 0)
+            {
+                _currentDeadline = 0;
+                _isTimerActive = false;
+                // Trigger time up event
+                // EventBus.Publish(new GameEvents.TimeUpEvent());
+            }
+
+            int minutes = Mathf.FloorToInt(_currentDeadline / 60F);
+            int seconds = Mathf.FloorToInt(_currentDeadline - minutes * 60);
+            _deadlineTimerText.text = string.Format("{0:0}:{1:00}", minutes, seconds);
+
+            if (_currentDeadline <= 60f)
+            {
+                // Pulse red
+                _deadlineTimerText.color = Color.Lerp(_timerWarningColor, _timerNormalColor, Mathf.PingPong(Time.time * 2f, 1f));
+            }
+            else
+            {
+                _deadlineTimerText.color = _timerNormalColor;
+            }
         }
 
         private void Update()
@@ -226,6 +269,11 @@ namespace Scar.UI
             }
         }
 
+        public void SetPowerLevel(int level)
+        {
+            if (_powerLevelText != null) _powerLevelText.text = $"LVL {level}";
+        }
+
         private void UpdatePowerStatus(string powerPath, string status)
         {
             if (_powerNameText == null) return;
@@ -233,19 +281,19 @@ namespace Scar.UI
             switch (powerPath)
             {
                 case "AGGRESSIVE":
-                    _powerNameText.text = "⚡ DESTRUCTION NOVA";
+                    _powerNameText.text = "s DESTRUCTION NOVA";
                     _powerNameText.color = new Color(1f, 0.2f, 0.1f, 1f);
                     break;
                 case "PROTECTIVE":
-                    _powerNameText.text = "⚡ KINETIC BARRIER";
+                    _powerNameText.text = "s KINETIC BARRIER";
                     _powerNameText.color = new Color(0f, 0.6f, 1f, 1f);
                     break;
                 case "STRATEGIC":
-                    _powerNameText.text = "⚡ CHRONO STASIS";
+                    _powerNameText.text = "s CHRONO STASIS";
                     _powerNameText.color = new Color(0f, 1f, 0.5f, 1f);
                     break;
                 default:
-                    _powerNameText.text = "⚡ DORMANT [NO POWER]";
+                    _powerNameText.text = "s DORMANT [NO POWER]";
                     _powerNameText.color = new Color(0.6f, 0.6f, 0.7f, 1f);
                     break;
             }
