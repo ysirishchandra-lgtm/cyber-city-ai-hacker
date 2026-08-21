@@ -135,53 +135,74 @@ export class Player {
       }
     }
 
-    let dx = 0;
-    let dy = 0;
+    let inputDx = 0;
+    let inputDy = 0;
 
-    if (keys['w'] || keys['W'] || keys['ArrowUp']) dy -= 1;
-    if (keys['s'] || keys['S'] || keys['ArrowDown']) dy += 1;
-    if (keys['a'] || keys['A'] || keys['ArrowLeft']) dx -= 1;
-    if (keys['d'] || keys['D'] || keys['ArrowRight']) dx += 1;
+    if (keys['w'] || keys['W'] || keys['ArrowUp']) inputDy -= 1;
+    if (keys['s'] || keys['S'] || keys['ArrowDown']) inputDy += 1;
+    if (keys['a'] || keys['A'] || keys['ArrowLeft']) inputDx -= 1;
+    if (keys['d'] || keys['D'] || keys['ArrowRight']) inputDx += 1;
 
-    if (dx !== 0 && dy !== 0) {
-      dx *= 0.7071;
-      dy *= 0.7071;
+    if (inputDx !== 0 && inputDy !== 0) {
+      inputDx *= 0.7071;
+      inputDy *= 0.7071;
     }
 
-    this.isSprinting = (keys['Shift'] || keys['shift']) && this.stamina > 10;
-    const currentSpeed = this.isSprinting ? this.sprintSpeed : this.speed;
+    const hasInput = inputDx !== 0 || inputDy !== 0;
+    this.isSprinting = hasInput && (keys['Shift'] || keys['shift']) && this.stamina > 10;
 
-    if (this.isSprinting) {
-      this.stamina = Math.max(0, this.stamina - 30 * dt);
+    let targetMaxSpeed = 0;
+    if (hasInput) {
+      targetMaxSpeed = this.isSprinting ? this.sprintSpeed : this.speed;
+      if (this.isSprinting) {
+        this.stamina = Math.max(0, this.stamina - 28 * dt);
+        this.locomotionState = 'SPRINT';
+      } else {
+        this.stamina = Math.min(this.maxStamina, this.stamina + 18 * dt);
+        this.locomotionState = 'RUN';
+      }
     } else {
-      this.stamina = Math.min(this.maxStamina, this.stamina + 20 * dt);
+      this.stamina = Math.min(this.maxStamina, this.stamina + 25 * dt);
+      this.locomotionState = this.attackAnimationTimer > 0 ? 'COMBAT_READY' : 'IDLE';
     }
 
-    this.vx = dx * currentSpeed;
-    this.vy = dy * currentSpeed;
+    const targetVx = inputDx * targetMaxSpeed;
+    const targetVy = inputDy * targetMaxSpeed;
+
+    // Fluid 8-directional acceleration & deceleration curves
+    const accelRate = hasInput ? 14 : 18;
+    this.vx += (targetVx - this.vx) * Math.min(1, accelRate * dt);
+    this.vy += (targetVy - this.vy) * Math.min(1, accelRate * dt);
 
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    if (dx !== 0 || dy !== 0) {
-      this.isMoving = true;
+    const currentSpeed = Math.hypot(this.vx, this.vy);
+    this.isMoving = currentSpeed > 10;
+
+    if (this.isMoving) {
       const distMoved = Math.hypot(this.x - this.lastEmittedX, this.y - this.lastEmittedY);
       if (distMoved > 25) {
         this.lastEmittedX = this.x;
         this.lastEmittedY = this.y;
         KaustubAPI.updatePosition(Math.round(this.x), Math.round(this.y));
       }
-    } else {
-      this.isMoving = false;
     }
 
+    // Smooth rotational turning (slerp/lerp angular interpolation)
+    let targetAngle = this.facingAngle;
     if (mousePos && camera) {
       const worldMouseX = mousePos.x + camera.x;
       const worldMouseY = mousePos.y + camera.y;
-      this.facingAngle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
-    } else if (dx !== 0 || dy !== 0) {
-      this.facingAngle = Math.atan2(dy, dx);
+      targetAngle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
+    } else if (hasInput) {
+      targetAngle = Math.atan2(inputDy, inputDx);
     }
+
+    let angleDiff = (targetAngle - this.facingAngle) % (Math.PI * 2);
+    if (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+    if (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    this.facingAngle += angleDiff * Math.min(1, 16 * dt);
 
     if (this.attackCooldown > 0) {
       this.attackCooldown -= dt;

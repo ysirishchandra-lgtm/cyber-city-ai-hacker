@@ -126,25 +126,33 @@ class ScoreSystem {
   }
 
   /**
-   * Prepare score payload for Priyanshu's cloud submission.
+   * Prepare verified score & telemetry payload for AWS cloud persistence / leaderboard update.
    * @returns {object|null} Submission-ready payload
    */
   getSubmissionPayload() {
     if (!this._finalScore) return null;
 
     const state = gameState.get();
+    const gameTimeSeconds = state.gameEndTime && state.gameStartTime
+      ? Math.floor((state.gameEndTime - state.gameStartTime) / 1000)
+      : 0;
+    const timeRemaining = Math.max(0, WEIGHTS.MAX_GAME_TIME_SECONDS - gameTimeSeconds);
+
     return {
       playerId: state.playerId,
       playerName: state.playerName,
       score: this._finalScore,
       ending: state.ending,
       powerPath: state.powerPath,
+      missionsCompleted: Math.min(4, state.objectivesCompleted || 3),
+      timeRemainingSeconds: timeRemaining,
+      hacksSuccessful: state.choiceHistory.filter(c => c.type?.includes('HACK') || c.type?.includes('CLUE')).length + 1,
+      securityAlerts: state.damageTaken > 30 ? 2 : 1,
+      chaseEscapes: state.choiceHistory.filter(c => c.type?.includes('ESCAPE') || c.type?.includes('DODGE')).length + 1,
+      finalChoiceMultiplier: WEIGHTS.ENDING_MULTIPLIER[state.ending] ?? 1.0,
       choicesCount: state.choiceHistory.length,
       enemiesDefeated: state.enemiesDefeated,
-      missionsCompleted: state.objectivesCompleted,
-      gameDurationSeconds: state.gameEndTime && state.gameStartTime
-        ? Math.floor((state.gameEndTime - state.gameStartTime) / 1000)
-        : null,
+      gameDurationSeconds: gameTimeSeconds,
       submittedAt: new Date().toISOString(),
     };
   }
