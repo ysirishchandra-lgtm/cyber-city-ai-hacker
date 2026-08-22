@@ -257,10 +257,10 @@ export class KaustubGameplayEngine {
   setupLevel1() {
     this.player.reset(200, 300);
     this.enemies = [
-      new Enemy('drone_1', 500, 200, ENEMY_TYPES.DRONE),
-      new Enemy('drone_2', 600, 400, ENEMY_TYPES.DRONE),
-      new Enemy('drone_3', 750, 250, ENEMY_TYPES.DRONE),
-      new Enemy('drone_4', 850, 450, ENEMY_TYPES.DRONE)
+      new Enemy('drone_1', 650, 220, ENEMY_TYPES.DRONE),
+      new Enemy('drone_2', 800, 420, ENEMY_TYPES.DRONE),
+      new Enemy('drone_3', 1000, 260, ENEMY_TYPES.DRONE),
+      new Enemy('drone_4', 1150, 450, ENEMY_TYPES.DRONE)
     ];
     this._warehouseObjectiveTriggered = false;
     this._areaTriggersChecked = {};

@@ -107,6 +107,27 @@ The game includes a dedicated **DEMO SELECTOR** button on the title screen for i
 
 ---
 
+## 🚀 Onboarding, Clarity & Game-Feel Enhancements (Latest Pass)
+
+1. **Contextual Onboarding (Show, Don't Tell)**:
+   - Dynamic non-intrusive HUD prompts: `[WASD] MOVE & [SHIFT] SPRINT` on initial spawn.
+   - `⚡ [SPACE] DODGE ROLL` appears only on first enemy attack windup.
+   - `⚔️ [LEFT CLICK] 3-HIT COMBO` on enemy contact.
+   - `⚡ [Q] / [R] / [G] ACTIVATE POWER` on power awakening.
+   - Prompts fade automatically after 4s or once demonstrated, and never repeat in the same session.
+2. **Plain-Language Objectives & 3D Compass Indicator**:
+   - Persistent tactical objective line across all 3 levels (e.g. `INFILTRATE WAREHOUSE [xm]`, `EVADE TRANSIT PATROLS [xm]`, `CONFRONT ATLAS [xm]`).
+   - Dynamic 3D directional compass needle rotating in real time toward the target coordinate.
+   - Animated on-screen completion toasts (`✓ OBJECTIVE COMPLETE`).
+3. **Pacing Rebalance**:
+   - Extended peaceful city exploration to 12–15s to allow breathing room and movement acclimation.
+   - Shifted enemy spawn coordinates to grant 8–10s before first engagement.
+4. **Real-Time Moral Alignment & Replay Hook**:
+   - Real-time HUD moral path badge (`ALIGNMENT: THE SAVIOR (100%)`, `THE AVENGER (75%)`, `THE ARBITER (67%)`).
+   - End-of-run "What-If" matrix teasing the 3 alternative undiscovered endings with hints to encourage immediate replay.
+
+---
+
 ## 📜 Third-Party Open Source Libraries & Licenses
 
 - **Three.js / WebGL / Canvas2D** — MIT License

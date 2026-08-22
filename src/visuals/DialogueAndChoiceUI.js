@@ -369,10 +369,27 @@ export class DialogueAndChoiceUI {
       ctx.fillText(stats.join('  |  '), w / 2, scoreY + 28);
     }
 
+    // What-If Replay Tease Matrix (Prompt curiosity for other paths)
+    const otherEndings = [
+      { id: ENDING.VILLAIN, name: 'THE AVENGER', hint: 'Destructive power' },
+      { id: ENDING.HERO, name: 'THE SAVIOR', hint: 'Protective shield' },
+      { id: ENDING.SAVIOR, name: 'THE ARBITER', hint: 'Strategic control' },
+      { id: ENDING.HUMAN, name: 'THE HUMAN (SECRET 2.0x)', hint: 'Perfect balance' }
+    ].filter(e => e.id !== ending);
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText('ALTERNATIVE DESTINIES REMAIN UNLOCKED:', w / 2, cardY + cardH - 65);
+
+    const teaseStr = otherEndings.map(e => `[?] ${e.name} (${e.hint})`).join('  •  ');
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '9px monospace';
+    ctx.fillText(teaseStr, w / 2, cardY + cardH - 48);
+
     // Action Prompts
     ctx.fillStyle = '#00f3ff';
-    ctx.font = 'bold 15px monospace';
-    ctx.fillText('[R] PLAY AGAIN   |   [L] VIEW LEADERBOARD', w / 2, cardY + cardH - 35);
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText('[R] PLAY AGAIN TO DISCOVER OTHER PATHS   |   [L] LEADERBOARD', w / 2, cardY + cardH - 22);
 
     ctx.restore();
   }

@@ -30,7 +30,7 @@ export class CyberHUD {
   render(ctx, state, missionSystem, w, h) {
     if (!state || state.gameStatus !== 'playing') return;
 
-    // 1. Top-Left: Player Health, Stamina & Focus
+    // 1. Top-Left: Player Health, Stamina & Moral Path Alignment
     this._renderPlayerStatus(ctx, state, 24, 24);
 
     // 2. Top-Right: Time Remaining & Mission Tracker
@@ -39,17 +39,121 @@ export class CyberHUD {
     // 3. Center Screen: Dynamic Aim Crosshair
     this._renderAimReticle(ctx, w / 2, h / 2);
 
-    // 4. In-World Floating Objective Indicator (Center-Left) with dynamic spatial distance
-    this._renderInWorldObjective(ctx, w / 2, h / 2 - 60);
+    // 4. In-World Floating Objective Indicator & 3D Directional Compass Arrow
+    this._renderInWorldObjective(ctx, state, w / 2, h / 2 - 60, w, h);
 
-    // 5. Bottom-Left: Circular Tactical Radar Minimap
+    // 5. Objective Confirmation Toasts
+    this._renderObjectiveToast(ctx, state, w / 2, 85);
+
+    // 6. Contextual One-Time Onboarding Prompts (Show, Don't Tell)
+    this._renderContextualOnboarding(ctx, state, w, h);
+
+    // 7. Bottom-Left: Circular Tactical Radar Minimap
     this._renderRadarMinimap(ctx, 80, h - 80, 48);
 
-    // 6. Bottom-Right: Tactical Action Ability Diamonds (Adapt Q, Dodge Space, Focus R)
+    // 8. Bottom-Right: Tactical Action Ability Diamonds (Adapt Q, Dodge Space, Focus R)
     this._renderActionAbilityDiamonds(ctx, state, w - 240, h - 70);
 
-    // 7. Dynamic Combat & Execution Feedback
+    // 9. Dynamic Combat & Execution Feedback
     this._renderCombatFeedback(ctx, w, h);
+  }
+
+  _renderObjectiveToast(ctx, state, cx, cy) {
+    const toast = state.objectiveToast;
+    if (!toast || toast.timer <= 0) return;
+
+    ctx.save();
+    const alpha = Math.min(1, toast.timer);
+    ctx.globalAlpha = alpha;
+
+    const toastW = 340;
+    const toastH = 36;
+    const tx = cx - toastW / 2;
+
+    ctx.fillStyle = 'rgba(6, 15, 28, 0.92)';
+    ctx.strokeStyle = '#00ff88';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#00ff88';
+    ctx.shadowBlur = 14;
+    ctx.fillRect(tx, cy, toastW, toastH);
+    ctx.strokeRect(tx, cy, toastW, toastH);
+
+    ctx.fillStyle = '#00ff88';
+    ctx.font = 'bold 13px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(toast.text, cx, cy + toastH / 2);
+    ctx.restore();
+  }
+
+  _renderContextualOnboarding(ctx, state, w, h) {
+    const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : null;
+    const player = gameplayState?.player;
+    if (!player) return;
+
+    let prompt = null;
+    let promptColor = '#00f3ff';
+
+    // 1. Initial Movement Prompt
+    if (!state.onboarding?.movement && this._time < 7.0) {
+      if (player.vx !== 0 || player.vy !== 0) {
+        import('../core/GameState.js').then(({ gameState }) => gameState.markOnboardingLearned('movement'));
+      } else {
+        prompt = '[WASD / ARROWS] MOVE  •  [SHIFT] SPRINT';
+        promptColor = '#00f3ff';
+      }
+    }
+
+    // 2. Incoming Attack Dodge Prompt
+    const windingEnemy = gameplayState.enemies?.find(e => e.isWindingUp);
+    if (windingEnemy && !state.onboarding?.dodge) {
+      prompt = '⚡ [SPACE] DODGE ROLL (INVULNERABILITY WINDOW)';
+      promptColor = '#ffb700';
+      if (player.isDodging) {
+        import('../core/GameState.js').then(({ gameState }) => gameState.markOnboardingLearned('dodge'));
+      }
+    }
+
+    // 3. Melee Attack Prompt on Enemy Proximity
+    const nearbyEnemy = gameplayState.enemies?.find(e => e.isAlive && Math.hypot(e.x - player.x, e.y - player.y) < 110);
+    if (nearbyEnemy && !state.onboarding?.attack && !windingEnemy) {
+      prompt = '⚔️ [LEFT CLICK] 3-HIT KATANA COMBO';
+      promptColor = '#00f3ff';
+      if (player.isAttacking) {
+        import('../core/GameState.js').then(({ gameState }) => gameState.markOnboardingLearned('attack'));
+      }
+    }
+
+    // 4. Power Activation Prompt upon Awakening
+    if (state.powerUnlocked && !state.onboarding?.power) {
+      const powerKey = state.powerPath === POWER_PATH.AGGRESSIVE ? '[Q] DESTRUCTION NOVA' : (state.powerPath === POWER_PATH.PROTECTIVE ? '[Q] KINETIC BARRIER' : '[Q] CHRONO STASIS');
+      prompt = `⚡ PRESS ${powerKey} TO ACTIVATE AWAKENED POWER`;
+      promptColor = '#d946ef';
+    }
+
+    if (prompt) {
+      ctx.save();
+      const pulse = Math.sin(this._time * 6) * 3;
+      const boxW = Math.min(520, w * 0.8);
+      const boxH = 34;
+      const bx = (w - boxW) / 2;
+      const by = h - 130 + pulse;
+
+      ctx.fillStyle = 'rgba(8, 12, 22, 0.9)';
+      ctx.strokeStyle = promptColor;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = promptColor;
+      ctx.shadowBlur = 12;
+      ctx.fillRect(bx, by, boxW, boxH);
+      ctx.strokeRect(bx, by, boxW, boxH);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(prompt, w / 2, by + boxH / 2);
+      ctx.restore();
+    }
   }
 
   _renderCombatFeedback(ctx, w, h) {
@@ -117,6 +221,33 @@ export class CyberHUD {
     ctx.shadowBlur = 6;
     ctx.fillRect(x, y + 44, barW * 0.75 * (state.stamina ? state.stamina / 100 : 1.0), 6);
 
+    // Real-Time Moral Path Alignment Badge
+    const a = state.aggressiveCount || 0;
+    const p = state.protectiveCount || 0;
+    const s = state.strategicCount || 0;
+    const total = a + p + s;
+    let alignmentText = 'ALIGNMENT: NEUTRAL (POWERLESS)';
+    let alignColor = '#94a3b8';
+
+    if (total > 0) {
+      if (a >= p && a >= s) {
+        alignmentText = `ALIGNMENT: THE AVENGER (${Math.round((a / total) * 100)}%)`;
+        alignColor = '#ff2200';
+      } else if (p >= a && p >= s) {
+        alignmentText = `ALIGNMENT: THE SAVIOR (${Math.round((p / total) * 100)}%)`;
+        alignColor = '#00ff88';
+      } else {
+        alignmentText = `ALIGNMENT: THE ARBITER (${Math.round((s / total) * 100)}%)`;
+        alignColor = '#00f3ff';
+      }
+    }
+
+    ctx.fillStyle = alignColor;
+    ctx.shadowColor = alignColor;
+    ctx.shadowBlur = 6;
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText(alignmentText, x, y + 64);
+
     ctx.restore();
   }
 
@@ -150,33 +281,46 @@ export class CyberHUD {
     ctx.restore();
   }
 
-  _renderInWorldObjective(ctx, x, y) {
+  _renderInWorldObjective(ctx, state, x, y, w, h) {
     ctx.save();
     const pulse = Math.sin(this._time * 5) * 3;
     const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : null;
+    const player = gameplayState?.player;
+    const phase = state?.phase || 'LEVEL_1';
+
+    let targetX = 900;
+    let targetY = 350;
+    let objTitle = 'INFILTRATE WAREHOUSE';
+
+    if (phase === 'LEVEL_2') {
+      targetX = 1400;
+      targetY = 400;
+      objTitle = 'EVADE TRANSIT PATROLS';
+    } else if (phase === 'LEVEL_3' || phase === 'FINAL_BATTLE') {
+      targetX = 1300;
+      targetY = 480;
+      objTitle = 'CONFRONT ATLAS THE PRODIGY';
+    }
 
     let distMeters = 128;
     let isCompleted = false;
+    let angleToTarget = 0;
 
-    if (gameplayState && gameplayState.player) {
-      const targetX = (gameplayState.warehouseTarget && gameplayState.warehouseTarget.x) || 900;
-      const targetY = (gameplayState.warehouseTarget && gameplayState.warehouseTarget.y) || 350;
-      const targetRadius = (gameplayState.warehouseTarget && gameplayState.warehouseTarget.radius) || 50;
+    if (player) {
+      const dx = targetX - player.x;
+      const dy = targetY - player.y;
+      const dist = Math.hypot(dx, dy);
+      angleToTarget = Math.atan2(dy, dx);
 
-      const px = gameplayState.player.x;
-      const py = gameplayState.player.y;
-      const dist = Math.hypot(targetX - px, targetY - py);
-
-      // Scaled so starting dist (~701px) translates to ~128m down to 0m at <= 50px radius
-      distMeters = Math.max(0, Math.round((dist - targetRadius) / 5.1));
-      if (dist <= targetRadius || gameplayState.warehouseTarget?.completed) {
+      distMeters = Math.max(0, Math.round(dist / 5.1));
+      if (dist <= 60) {
         distMeters = 0;
         isCompleted = true;
       }
     }
 
-    // Tactical Cyan Hexagonal Visor Objective Badge: REACH THE WAREHOUSE [128m]
-    const badgeW = 220;
+    // Tactical Cyan Hexagonal Visor Objective Badge
+    const badgeW = 260;
     const badgeH = 28;
     const badgeX = x - badgeW / 2;
     const badgeY = y - 30;
@@ -203,11 +347,26 @@ export class CyberHUD {
 
     // Objective Text
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px monospace';
+    ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const objText = isCompleted ? 'WAREHOUSE REACHED [0m]' : `REACH THE WAREHOUSE [${distMeters}m]`;
+    const objText = isCompleted ? `${objTitle} [0m]` : `${objTitle} [${distMeters}m]`;
     ctx.fillText(objText, x, badgeY + badgeH / 2);
+
+    // 3D Directional Compass Needle Indicator
+    ctx.save();
+    ctx.translate(badgeX + badgeW - 14, badgeY + badgeH / 2);
+    ctx.rotate(angleToTarget);
+    ctx.fillStyle = themeColor;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(8, 0);
+    ctx.lineTo(-5, -5);
+    ctx.lineTo(-2, 0);
+    ctx.lineTo(-5, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
 
     // Floating Downward Diamond Pointer
     ctx.fillStyle = themeColor;

@@ -169,7 +169,7 @@ class GameManager {
         if (gameState.getPhase() === GAME_PHASE.CITY_EXPLORATION) {
           this.triggerAttack();
         }
-      }, 5000);
+      }, 12000);
     }
   }
 

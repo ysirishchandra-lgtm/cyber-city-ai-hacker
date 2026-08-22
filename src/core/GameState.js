@@ -106,6 +106,18 @@ const createInitialState = () => ({
   // Session
   gameStatus: 'idle',   // idle | playing | paused | complete | failed
   ending: ENDING.NONE,
+
+  // Contextual Onboarding Tracking (Show, Don't Tell)
+  onboarding: {
+    movement: false,
+    dodge: false,
+    attack: false,
+    interact: false,
+    power: false,
+  },
+
+  // Objective Confirmation Toasts
+  objectiveToast: null,
 });
 
 // ─── GameState Class ──────────────────────────────────────────────────────────
@@ -113,6 +125,25 @@ class GameState {
   constructor() {
     this._state = createInitialState();
     this._snapshots = []; // for undo/replay in QA
+  }
+
+  // ── Onboarding State ───────────────────────────────────────────────────────
+  markOnboardingLearned(key) {
+    if (this._state.onboarding && this._state.onboarding[key] !== undefined) {
+      this._state.onboarding[key] = true;
+    }
+  }
+
+  hasLearnedOnboarding(key) {
+    return !!(this._state.onboarding && this._state.onboarding[key]);
+  }
+
+  setObjectiveToast(text, duration = 2.5) {
+    this._state.objectiveToast = { text, timer: duration };
+  }
+
+  getObjectiveToast() {
+    return this._state.objectiveToast;
   }
 
   // ── Reads ────────────────────────────────────────────────────────────────

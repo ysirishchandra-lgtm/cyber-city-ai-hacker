@@ -11,8 +11,11 @@
  */
 
 export class BackendClient {
-  constructor(baseUrl = 'http://localhost:3000') {
-    this.baseUrl = baseUrl;
+  constructor(baseUrl = null) {
+    const defaultUrl = (typeof window !== 'undefined' && window.__SCAR_API_BASE_URL__) 
+      || (typeof process !== 'undefined' && process.env?.API_BASE_URL) 
+      || 'http://localhost:3000';
+    this.baseUrl = baseUrl || defaultUrl;
     this.token = null;
     this.player = null;
     this.currentSessionId = null;
