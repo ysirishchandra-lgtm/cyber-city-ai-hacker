@@ -147,12 +147,30 @@ export class CityEnvironment {
     const viewW = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const viewH = typeof window !== 'undefined' ? window.innerHeight : 720;
 
-    // ─── Layer 1: Parallax Skyline & Cyberpunk Atmosphere ───────────────────
+    const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : null;
+    const currentPhase = gameplayState?.phase || 'LEVEL_1';
+
+    // ─── Layer 1: Parallax Skyline & District Atmosphere ───────────────────
     ctx.save();
     const skyGrad = ctx.createLinearGradient(0, 0, 0, viewH);
-    skyGrad.addColorStop(0, '#030308');
-    skyGrad.addColorStop(0.5, '#070712');
-    skyGrad.addColorStop(1, '#0e0e1c');
+
+    if (currentPhase === 'LEVEL_2') {
+      // Level 2: Subterranean Transit Hub (Indigo / Cyan industrial)
+      skyGrad.addColorStop(0, '#04040f');
+      skyGrad.addColorStop(0.5, '#0a0a20');
+      skyGrad.addColorStop(1, '#121028');
+    } else if (currentPhase === 'LEVEL_3' || currentPhase === 'FINAL_BATTLE') {
+      // Level 3: High-Altitude Corporate Skybridge (Deep Abyss & Storm)
+      skyGrad.addColorStop(0, '#020612');
+      skyGrad.addColorStop(0.6, '#0b1329');
+      skyGrad.addColorStop(1, '#1e293b');
+    } else {
+      // Level 1: Rain District (Classic Cyberpunk Midnight)
+      skyGrad.addColorStop(0, '#030308');
+      skyGrad.addColorStop(0.5, '#070712');
+      skyGrad.addColorStop(1, '#0e0e1c');
+    }
+
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, viewW, viewH);
 
@@ -186,119 +204,249 @@ export class CityEnvironment {
     }
     ctx.restore();
 
-    // ─── Layer 2: Main Playable Street Block (World Space) ──────────────────
+    // ─── Layer 2: Main Playable District (World Space) ──────────────────────
     ctx.save();
     ctx.translate(-camera.x, -camera.y);
 
-    // Upper Building Facades & Shop Fronts
-    for (const shop of this.storefronts) {
-      ctx.save();
-      // Facade Wall
-      ctx.fillStyle = '#10101c';
-      ctx.fillRect(shop.x, shop.y, shop.w, shop.h);
-      ctx.strokeStyle = '#222238';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(shop.x, shop.y, shop.w, shop.h);
+    if (currentPhase === 'LEVEL_2') {
+      // ════════════════════════════════════════════════════════════════════════
+      // LEVEL 2: TRANSIT DISTRICT (Subway Platform & High-Speed Rail Corridor)
+      // ════════════════════════════════════════════════════════════════════════
+      // Platform Flooring
+      ctx.fillStyle = '#10121d';
+      ctx.fillRect(0, 140, this.worldWidth, 680);
 
-      // Shop Entrance Door
-      ctx.fillStyle = '#0a0a14';
-      ctx.fillRect(shop.x + shop.w / 2 - 25, shop.y + shop.h - 40, 50, 40);
-      ctx.strokeStyle = shop.color;
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(shop.x + shop.w / 2 - 25, shop.y + shop.h - 40, 50, 40);
+      // Yellow Tactile Platform Edge Safety Lines
+      ctx.fillStyle = '#ffb700';
+      ctx.fillRect(0, 140, this.worldWidth, 12);
+      ctx.fillRect(0, 808, this.worldWidth, 12);
 
-      // Illuminated Signboard
-      ctx.fillStyle = '#161626';
-      ctx.fillRect(shop.x + 10, shop.y + 12, shop.w - 20, 32);
-      ctx.strokeStyle = shop.color;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(shop.x + 10, shop.y + 12, shop.w - 20, 32);
+      // Dual High-Speed Rail Tracks
+      ctx.fillStyle = '#080910';
+      ctx.fillRect(0, 260, this.worldWidth, 120);
+      ctx.fillRect(0, 580, this.worldWidth, 120);
 
-      ctx.fillStyle = shop.color;
-      ctx.shadowColor = shop.color;
-      ctx.shadowBlur = 12;
-      ctx.font = 'bold 12px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(shop.name, shop.x + shop.w / 2, shop.y + 32);
-
-      // Fire Escapes / Air-Con Vents
-      ctx.strokeStyle = '#2d2d44';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(shop.x + 15, shop.y + 55);
-      ctx.lineTo(shop.x + 45, shop.y + 55);
-      ctx.lineTo(shop.x + 30, shop.y + 85);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // Overhead Hanging Power Cables
-    ctx.save();
-    ctx.strokeStyle = '#181828';
-    ctx.lineWidth = 2;
-    for (const cable of this.overheadCables) {
-      ctx.beginPath();
-      ctx.moveTo(cable.x1, cable.y1);
-      ctx.quadraticCurveTo((cable.x1 + cable.x2) / 2, cable.y1 + cable.sag, cable.x2, cable.y2);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // Asphalt Roadway Ground
-    ctx.fillStyle = '#0c0c14';
-    ctx.fillRect(0, 140, this.worldWidth, 680);
-
-    // Upper & Lower Sidewalk Curbs
-    ctx.fillStyle = '#141424';
-    ctx.fillRect(0, 115, this.worldWidth, 25);
-    ctx.fillRect(0, 820, this.worldWidth, 35);
-
-    // Neon Edge Curb Strips
-    ctx.strokeStyle = 'rgba(0, 243, 255, 0.4)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, 140); ctx.lineTo(this.worldWidth, 140);
-    ctx.moveTo(0, 820); ctx.lineTo(this.worldWidth, 820);
-    ctx.stroke();
-
-    // Road Markings (Yellow & Cyan Dashed Lane Dividers)
-    ctx.setLineDash([40, 30]);
-    ctx.strokeStyle = 'rgba(255, 183, 0, 0.35)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(0, 480);
-    ctx.lineTo(this.worldWidth, 480);
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(0, 243, 255, 0.2)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, 310); ctx.lineTo(this.worldWidth, 310);
-    ctx.moveTo(0, 650); ctx.lineTo(this.worldWidth, 650);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Zebra Crosswalks at Strategic Junctions
-    for (let cx = 350; cx < this.worldWidth; cx += 550) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-      for (let cz = 160; cz < 800; cz += 45) {
-        ctx.fillRect(cx, cz, 75, 24);
+      // Rail Ties & Steel Rails
+      ctx.strokeStyle = '#333b52';
+      ctx.lineWidth = 4;
+      for (let rx = 0; rx < this.worldWidth; rx += 45) {
+        ctx.beginPath();
+        ctx.moveTo(rx, 260); ctx.lineTo(rx, 380);
+        ctx.moveTo(rx, 580); ctx.lineTo(rx, 700);
+        ctx.stroke();
       }
-    }
 
-    // Puddle Neon Reflections with Wet Water Specular
-    for (const p of this.puddles) {
-      ctx.save();
-      ctx.fillStyle = p.color;
+      // Glowing High-Voltage Third Rails
+      ctx.strokeStyle = '#00f3ff';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#00f3ff';
+      ctx.shadowBlur = 10;
       ctx.beginPath();
-      ctx.ellipse(p.x, p.y, p.rx, p.ry, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Ripple edge ring
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-      ctx.lineWidth = 1;
+      ctx.moveTo(0, 290); ctx.lineTo(this.worldWidth, 290);
+      ctx.moveTo(0, 350); ctx.lineTo(this.worldWidth, 350);
+      ctx.moveTo(0, 610); ctx.lineTo(this.worldWidth, 610);
+      ctx.moveTo(0, 670); ctx.lineTo(this.worldWidth, 670);
       ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Illuminated Transit Banners & Station Signage
+      const transitSigns = [
+        { x: 200, name: 'PLATFORM 1 // SECTOR EXPRESS', color: '#00f3ff' },
+        { x: 650, name: 'TRANSFER HUB: SKYBRIDGE APEX', color: '#ffb700' },
+        { x: 1100, name: 'RESTRICTED RAIL // HIGH VOLTAGE', color: '#ff0055' },
+        { x: 1550, name: 'TERMINAL EXTRACTION GATE', color: '#00ff88' }
+      ];
+
+      transitSigns.forEach(ts => {
+        ctx.save();
+        ctx.fillStyle = '#0a0d18';
+        ctx.fillRect(ts.x, 70, 320, 45);
+        ctx.strokeStyle = ts.color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(ts.x, 70, 320, 45);
+
+        ctx.fillStyle = ts.color;
+        ctx.shadowColor = ts.color;
+        ctx.shadowBlur = 12;
+        ctx.font = 'bold 13px monospace';
+        ctx.fillText(ts.name, ts.x + 15, 98);
+        ctx.restore();
+      });
+
+    } else if (currentPhase === 'LEVEL_3' || currentPhase === 'FINAL_BATTLE') {
+      // ════════════════════════════════════════════════════════════════════════
+      // LEVEL 3: CORPORATE SKYBRIDGE (High-Altitude Glass Suspension Bridge)
+      // ════════════════════════════════════════════════════════════════════════
+      // Reinforced Structural Trusses beneath Glass
+      ctx.fillStyle = '#080d1a';
+      ctx.fillRect(0, 140, this.worldWidth, 680);
+
+      // Glass Skybridge Hexagonal Walkway
+      ctx.fillStyle = 'rgba(0, 243, 255, 0.08)';
+      ctx.fillRect(0, 180, this.worldWidth, 600);
+
+      // Glowing Cyan Structural Railings
+      ctx.strokeStyle = '#00f3ff';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#00f3ff';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.moveTo(0, 180); ctx.lineTo(this.worldWidth, 180);
+      ctx.moveTo(0, 780); ctx.lineTo(this.worldWidth, 780);
+      ctx.stroke();
+
+      // Translucent Structural Grid
+      ctx.strokeStyle = 'rgba(0, 243, 255, 0.2)';
+      ctx.lineWidth = 1.5;
+      for (let gx = 0; gx < this.worldWidth; gx += 80) {
+        ctx.beginPath();
+        ctx.moveTo(gx, 180); ctx.lineTo(gx, 780);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+
+      // Corporate Monolith Pillars at intervals
+      for (let mx = 300; mx < this.worldWidth; mx += 400) {
+        ctx.save();
+        ctx.fillStyle = '#0b1122';
+        ctx.fillRect(mx, 120, 50, 60);
+        ctx.fillRect(mx, 780, 50, 60);
+        ctx.strokeStyle = '#ffb700';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(mx, 120, 50, 60);
+        ctx.strokeRect(mx, 780, 50, 60);
+        ctx.restore();
+      }
+
+      // Atlas Command Altar at Skybridge Apex (x: 1300)
+      ctx.save();
+      ctx.strokeStyle = '#00ffff';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#00ffff';
+      ctx.shadowBlur = 24;
+      ctx.beginPath();
+      ctx.arc(1300, 480, 110, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(0, 243, 255, 0.15)';
+      ctx.beginPath();
+      ctx.arc(1300, 480, 110, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
+
+    } else {
+      // ════════════════════════════════════════════════════════════════════════
+      // LEVEL 1: RAIN DISTRICT (Classic Cyberpunk Midnight City Block)
+      // ════════════════════════════════════════════════════════════════════════
+      // Upper Building Facades & Shop Fronts
+      for (const shop of this.storefronts) {
+        ctx.save();
+        ctx.fillStyle = '#10101c';
+        ctx.fillRect(shop.x, shop.y, shop.w, shop.h);
+        ctx.strokeStyle = '#222238';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(shop.x, shop.y, shop.w, shop.h);
+
+        // Shop Entrance Door
+        ctx.fillStyle = '#0a0a14';
+        ctx.fillRect(shop.x + shop.w / 2 - 25, shop.y + shop.h - 40, 50, 40);
+        ctx.strokeStyle = shop.color;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(shop.x + shop.w / 2 - 25, shop.y + shop.h - 40, 50, 40);
+
+        // Illuminated Signboard
+        ctx.fillStyle = '#161626';
+        ctx.fillRect(shop.x + 10, shop.y + 12, shop.w - 20, 32);
+        ctx.strokeStyle = shop.color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(shop.x + 10, shop.y + 12, shop.w - 20, 32);
+
+        ctx.fillStyle = shop.color;
+        ctx.shadowColor = shop.color;
+        ctx.shadowBlur = 12;
+        ctx.font = 'bold 12px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(shop.name, shop.x + shop.w / 2, shop.y + 32);
+
+        // Fire Escapes / Air-Con Vents
+        ctx.strokeStyle = '#2d2d44';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(shop.x + 15, shop.y + 55);
+        ctx.lineTo(shop.x + 45, shop.y + 55);
+        ctx.lineTo(shop.x + 30, shop.y + 85);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Overhead Hanging Power Cables
+      ctx.save();
+      ctx.strokeStyle = '#181828';
+      ctx.lineWidth = 2;
+      for (const cable of this.overheadCables) {
+        ctx.beginPath();
+        ctx.moveTo(cable.x1, cable.y1);
+        ctx.quadraticCurveTo((cable.x1 + cable.x2) / 2, cable.y1 + cable.sag, cable.x2, cable.y2);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Asphalt Roadway Ground
+      ctx.fillStyle = '#0c0c14';
+      ctx.fillRect(0, 140, this.worldWidth, 680);
+
+      // Upper & Lower Sidewalk Curbs
+      ctx.fillStyle = '#141424';
+      ctx.fillRect(0, 115, this.worldWidth, 25);
+      ctx.fillRect(0, 820, this.worldWidth, 35);
+
+      // Neon Edge Curb Strips
+      ctx.strokeStyle = 'rgba(0, 243, 255, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 140); ctx.lineTo(this.worldWidth, 140);
+      ctx.moveTo(0, 820); ctx.lineTo(this.worldWidth, 820);
+      ctx.stroke();
+
+      // Road Markings (Yellow & Cyan Dashed Lane Dividers)
+      ctx.setLineDash([40, 30]);
+      ctx.strokeStyle = 'rgba(255, 183, 0, 0.35)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, 480);
+      ctx.lineTo(this.worldWidth, 480);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(0, 243, 255, 0.2)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 310); ctx.lineTo(this.worldWidth, 310);
+      ctx.moveTo(0, 650); ctx.lineTo(this.worldWidth, 650);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Zebra Crosswalks at Strategic Junctions
+      for (let cx = 350; cx < this.worldWidth; cx += 550) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        for (let cz = 160; cz < 800; cz += 45) {
+          ctx.fillRect(cx, cz, 75, 24);
+        }
+      }
+
+      // Puddle Neon Reflections with Wet Water Specular
+      for (const p of this.puddles) {
+        ctx.save();
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, p.rx, p.ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ripple edge ring
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     // Holographic Cyberpunk Billboards

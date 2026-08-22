@@ -39,6 +39,7 @@ export class PrototypeRenderer {
     // Camera
     this.camera = { x: 0, y: 0 };
     this._lastTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    this._levelBanner = null;
   }
 
   async init() {
@@ -53,6 +54,18 @@ export class PrototypeRenderer {
     window.addEventListener('keydown', (e) => this._handleKey(e));
     window.addEventListener('click', (e) => this._handleClick(e));
     window.addEventListener('mousemove', (e) => this._handleMouseMove(e));
+
+    // Listen to level start for title card announcement
+    eventBus.on(EVENTS.LEVEL_STARTED, ({ level }) => {
+      const titles = {
+        1: { main: 'LEVEL 1: THE POWERLESS', sub: 'RAIN DISTRICT // INFILTRATE THE WAREHOUSE' },
+        2: { main: 'LEVEL 2: EVOLUTION', sub: 'TRANSIT DISTRICT // RESISTANCE RESCUE & ESCAPE' },
+        3: { main: 'LEVEL 3: IDENTITY', sub: 'CORPORATE SKYBRIDGE // ATLAS CONFRONTATION' }
+      };
+      const info = titles[level] || { main: `LEVEL ${level}`, sub: 'MISSION ACTIVE' };
+      this._levelBanner = { ...info, timer: 3.5 };
+      shaderPipeline.triggerFlash('#00f3ff', 0.5);
+    });
 
     // Listen to power awakening for screen-wide VFX burst
     eventBus.on(EVENTS.POWER_AWAKENED, (data) => {
@@ -235,6 +248,34 @@ export class PrototypeRenderer {
       // E. Render Active Dialogue Overlay
       if (this._currentDialogue) {
         dialogueAndChoiceUI.renderDialogue(ctx, this._currentDialogue, this._dialogueLine, w, h);
+      }
+
+      // E2. Render Level Title Card Banner
+      if (this._levelBanner) {
+        this._levelBanner.timer -= dt;
+        const bannerAlpha = Math.min(1, this._levelBanner.timer);
+        ctx.save();
+        ctx.globalAlpha = bannerAlpha;
+        ctx.fillStyle = 'rgba(5, 7, 15, 0.88)';
+        ctx.fillRect(0, h * 0.35, w, 120);
+        ctx.strokeStyle = '#00f3ff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, h * 0.35, w, 120);
+
+        ctx.fillStyle = '#00f3ff';
+        ctx.shadowColor = '#00f3ff';
+        ctx.shadowBlur = 20;
+        ctx.font = 'bold 28px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(this._levelBanner.main, w / 2, h * 0.35 + 50);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 0;
+        ctx.font = '14px monospace';
+        ctx.fillText(this._levelBanner.sub, w / 2, h * 0.35 + 85);
+        ctx.restore();
+
+        if (this._levelBanner.timer <= 0) this._levelBanner = null;
       }
 
       // F. Render Pause Menu Overlay
