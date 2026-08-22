@@ -92,9 +92,28 @@ export class CyberHUD {
 
     ctx.save();
 
-    // Execution Prompt
-    const lowHpEnemy = gameplayState.enemies?.find(e => e.health <= e.maxHealth * 0.28);
-    if (lowHpEnemy) {
+    // Warehouse Entrance Level 2 Trigger Prompt
+    if (gameplayState.warehouseTarget?.playerAtWarehouse) {
+      const pulse = Math.sin(this._time * 6) * 3;
+      const btnW = 360;
+      const btnH = 52;
+      const bx = (w - btnW) / 2;
+      const by = h / 2 + 25 + pulse;
+
+      ctx.fillStyle = 'rgba(0, 243, 255, 0.95)';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#00f3ff';
+      ctx.shadowBlur = 24;
+      ctx.fillRect(bx, by, btnW, btnH);
+      ctx.strokeRect(bx, by, btnW, btnH);
+
+      ctx.fillStyle = '#050a14';
+      ctx.font = 'bold 15px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`🚪 PRESS [E] OR CLICK HERE TO`, w / 2, by + 22);
+      ctx.fillText(`ENTER WAREHOUSE (LEVEL 2)`, w / 2, by + 40);
+    } else if (lowHpEnemy) {
       const pulse = Math.sin(this._time * 8) * 4;
       ctx.fillStyle = 'rgba(255, 0, 51, 0.9)';
       ctx.shadowColor = '#ff0033';

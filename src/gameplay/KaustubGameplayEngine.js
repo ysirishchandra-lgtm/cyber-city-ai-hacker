@@ -66,7 +66,17 @@ export class KaustubGameplayEngine {
     window.addEventListener('keydown', (e) => {
       this.keys[e.key] = true;
 
-      if ((e.key === 'e' || e.key === 'E') && gameState.isPlaying()) {
+      if ((e.key === 'e' || e.key === 'E' || e.key === 'Enter') && gameState.isPlaying()) {
+        // 0. Check for Warehouse Level 2 Transition Trigger
+        const distToWarehouse = Math.hypot(
+          this.player.x - this.warehouseTarget.x,
+          this.player.y - this.warehouseTarget.y
+        );
+        if (distToWarehouse <= 110) {
+          this.enterWarehouseNextLevel();
+          return;
+        }
+
         // 1. Check for Execution Finisher
         if (this.player.executeTarget && this.player.executeTarget.isAlive) {
           this.player.execute(this.enemies, this.particleEffects);
@@ -213,6 +223,20 @@ export class KaustubGameplayEngine {
     import('../visuals/AudioEngine.js').then(({ audioEngine }) => {
       audioEngine.playImpact();
     });
+  }
+
+  enterWarehouseNextLevel() {
+    console.log('[KaustubEngine] Player entered Warehouse! Transitioning to Level 2...');
+    this._warehouseObjectiveTriggered = true;
+    import('../visuals/ShaderPipeline.js').then(({ shaderPipeline }) => {
+      shaderPipeline.triggerFlash('#00f3ff', 0.85);
+      shaderPipeline.triggerGlitch(0.6);
+      shaderPipeline.addShake(0.7);
+    });
+    import('../visuals/AudioEngine.js').then(({ audioEngine }) => {
+      audioEngine.playPowerActivation('STRATEGIC');
+    });
+    eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
   }
 
   reset() {
@@ -576,7 +600,8 @@ export class KaustubGameplayEngine {
         x: this.warehouseTarget.x,
         y: this.warehouseTarget.y,
         radius: this.warehouseTarget.radius,
-        completed: !!this._warehouseObjectiveTriggered
+        completed: !!this._warehouseObjectiveTriggered,
+        playerAtWarehouse: Math.hypot(this.player.x - this.warehouseTarget.x, this.player.y - this.warehouseTarget.y) <= 110
       },
       enemies: this.enemies.filter(e => e.isAlive).map(e => ({
         id: e.id,

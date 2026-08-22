@@ -392,6 +392,15 @@ export class PrototypeRenderer {
   }
 
   _handleClick(e) {
+    // Click to Enter Warehouse (Level 2 Transition)
+    const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : null;
+    if (gameplayState?.warehouseTarget?.playerAtWarehouse) {
+      import('../gameplay/KaustubGameplayEngine.js').then(({ kaustubEngine }) => {
+        kaustubEngine.enterWarehouseNextLevel();
+      });
+      return;
+    }
+
     // Click to advance cinematic
     if (cinematicsEngine.active) {
       cinematicsEngine.skip();
