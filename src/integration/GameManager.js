@@ -159,17 +159,19 @@ class GameManager {
     if (this._engine) this._engine.setScene('CITY_NORMAL');
     this._startGameLoop();
 
-    // Preserve Kaustub's engine integration if it provides custom exploration start
+    // Let the player freely explore the tutorial city block.
+    // The corporate raid attack is ONLY triggered when the player completes tutorial objectives or interacts with the clue/checkpoint.
     if (this._engine && typeof this._engine.startCityExploration === 'function') {
       this._engine.startCityExploration();
     } else {
-      // Safe fallback when running standalone without active gameplay triggers
       if (this._cityFallbackTimer) clearTimeout(this._cityFallbackTimer);
+      // Give player generous time (120s) or explicit interaction trigger to complete tutorial
       this._cityFallbackTimer = setTimeout(() => {
         if (gameState.getPhase() === GAME_PHASE.CITY_EXPLORATION) {
+          console.log('[GameManager] Tutorial exploration complete. Triggering raid sequence.');
           this.triggerAttack();
         }
-      }, 5000);
+      }, 120000); // 120 seconds fallback, allowing ample tutorial exploration time
     }
   }
 

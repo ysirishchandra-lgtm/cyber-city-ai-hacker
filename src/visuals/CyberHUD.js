@@ -30,6 +30,11 @@ export class CyberHUD {
   render(ctx, state, missionSystem, w, h) {
     if (!state || state.gameStatus !== 'playing') return;
 
+    // Render tutorial exploration banner during CITY_EXPLORATION phase
+    if (state.gamePhase === 'CITY_EXPLORATION') {
+      this._renderTutorialBanner(ctx, w, h);
+    }
+
     // 1. Top-Left: Player Health, Stamina & Focus
     this._renderPlayerStatus(ctx, state, 24, 24);
 
@@ -50,6 +55,34 @@ export class CyberHUD {
 
     // 7. Dynamic Combat & Execution Feedback
     this._renderCombatFeedback(ctx, w, h);
+  }
+
+  _renderTutorialBanner(ctx, w, h) {
+    ctx.save();
+    const pulse = Math.sin(this._time * 4) * 0.2 + 0.8;
+    const bannerW = Math.min(740, w * 0.9);
+    const bannerH = 46;
+    const bx = (w - bannerW) / 2;
+    const by = 20;
+
+    ctx.fillStyle = 'rgba(5, 12, 22, 0.92)';
+    ctx.strokeStyle = '#00f3ff';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#00f3ff';
+    ctx.shadowBlur = 12;
+    ctx.fillRect(bx, by, bannerW, bannerH);
+    ctx.strokeRect(bx, by, bannerW, bannerH);
+
+    ctx.fillStyle = '#00f3ff';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('🎓 TUTORIAL EXPLORATION: MOVE WITH WASD | SHIFT SPRINT | SPACE DODGE | LEFT CLICK ATTACK', w / 2, by + 18);
+
+    ctx.fillStyle = '#ffb700';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText(`APPROACH CLUE OR CHECKPOINT & PRESS [E] TO LAUNCH CORPORATE RAID!`, w / 2, by + 34);
+
+    ctx.restore();
   }
 
   _renderCombatFeedback(ctx, w, h) {
