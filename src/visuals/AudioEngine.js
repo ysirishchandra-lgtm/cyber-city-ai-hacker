@@ -189,6 +189,29 @@ export class AudioEngine {
     osc.stop(t + 0.19);
   }
 
+  playComboPop(step = 1) {
+    if (!this._initialized || this.isMuted) return;
+    this.ensureContext();
+    const t = this.ctx.currentTime;
+    const baseFreq = 440 * Math.pow(1.18, step);
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = step >= 3 ? 'sawtooth' : 'triangle';
+    osc.frequency.setValueAtTime(baseFreq, t);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.45, t + 0.12);
+
+    gain.gain.setValueAtTime(step >= 3 ? 0.52 : 0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.14);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(t);
+    osc.stop(t + 0.15);
+  }
+
   playDodge() {
     if (!this._initialized || this.isMuted) return;
     this.ensureContext();
