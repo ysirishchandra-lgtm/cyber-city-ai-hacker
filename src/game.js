@@ -72,5 +72,45 @@ eventBus.on(EVENTS.CHOICE_MADE, (d) => console.log('[SCAR] Choice made:', d));
 eventBus.on(EVENTS.SCORE_CALCULATED, (d) => console.log('[SCAR] Score:', d.score));
 eventBus.on(EVENTS.ENDING_TRIGGERED, (d) => console.log('[SCAR] Ending:', d.ending));
 
+// ─── Hackathon Judge Rapid Demo Router ─────────────────────────────────────────
+if (typeof window !== 'undefined') {
+  window.__SCAR_DEMO_JUMP__ = async (stage) => {
+    audioEngine.init();
+    audioEngine.startBGM();
+    audioEngine.playUIClick();
+
+    const startScreen = document.getElementById('start-screen');
+    if (startScreen) startScreen.classList.add('hidden');
+
+    const nameInput = document.getElementById('player-name');
+    const name = nameInput?.value?.trim() || 'Judge';
+
+    if (stage === 'LEVEL_1') {
+      await gameManager.startGame('judge_session', name);
+    } else if (stage === 'BOSS_1') {
+      await gameManager.startGame('judge_session', name);
+      // Skip straight to boss in warehouse
+      kaustubEngine.player.x = 880;
+      kaustubEngine.player.y = 350;
+      kaustubEngine.update({ phase: 'LEVEL_1' }, 0.016);
+    } else if (stage === 'LEVEL_2') {
+      await gameManager.startGame('judge_session', name);
+      const { gameState } = await import('./core/GameState.js');
+      gameState.unlockPower('PROTECTIVE');
+      gameManager._runLevel(2);
+    } else if (stage === 'LEVEL_3') {
+      await gameManager.startGame('judge_session', name);
+      const { gameState } = await import('./core/GameState.js');
+      gameState.unlockPower('STRATEGIC');
+      gameManager._runLevel(3);
+    } else if (stage === 'FINAL_CHOICE') {
+      await gameManager.startGame('judge_session', name);
+      const { gameState } = await import('./core/GameState.js');
+      gameState.unlockPower('AGGRESSIVE');
+      gameManager._runFinalChoice();
+    }
+  };
+}
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 boot().catch(console.error);

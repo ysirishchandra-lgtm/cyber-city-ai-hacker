@@ -41,6 +41,16 @@ export class KaustubGameplayEngine {
     this.warehouseTarget = { x: 900, y: 350, radius: 50 };
     this._warehouseObjectiveTriggered = false;
 
+    // Environmental Combat Objects
+    this.environmentObjects = {
+      cameraHack: { x: 480, y: 220, hacked: false, label: 'SECURITY CAM' },
+      explosiveBarrel: { x: 820, y: 350, detonated: false, label: 'EXPLOSIVE BARREL' },
+      turret: { x: 1180, y: 250, hacked: false, cooldown: 0, label: 'DEFENSE TURRET' },
+      electricalPuddle: { x: 700, y: 480, radius: 50 }
+    };
+
+    this.ally = null; // Spawned if player chose protective/mercy path
+
     this._setupInputs();
   }
 
@@ -57,10 +67,49 @@ export class KaustubGameplayEngine {
       this.keys[e.key] = true;
 
       if ((e.key === 'e' || e.key === 'E') && gameState.isPlaying()) {
+        // 1. Check for Execution Finisher
         if (this.player.executeTarget && this.player.executeTarget.isAlive) {
           this.player.execute(this.enemies, this.particleEffects);
           return;
         }
+
+        // 2. Interactive Environmental Objects Check
+        const distToCam = Math.hypot(this.player.x - this.environmentObjects.cameraHack.x, this.player.y - this.environmentObjects.cameraHack.y);
+        if (distToCam < 75 && !this.environmentObjects.cameraHack.hacked) {
+          this.environmentObjects.cameraHack.hacked = true;
+          // Stun all nearby enemies
+          this.enemies.forEach(en => {
+            if (en.isAlive && Math.hypot(en.x - 480, en.y - 220) < 260) {
+              en.applyStasis(3.0);
+            }
+          });
+          import('../visuals/ShaderPipeline.js').then(({ shaderPipeline }) => {
+            shaderPipeline.triggerFlash('#00f3ff', 0.5);
+            shaderPipeline.triggerGlitch(0.4);
+          });
+          import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+            particleSystem.spawnDamageNumber(480, 190, 'CAM OVERLOAD: STUN ACTIVE!', true, '#00f3ff');
+            particleSystem.spawnNova(480, 220, 180, '#00f3ff');
+          });
+          eventBus.emit(EVENTS.CLUE_DISCOVERED, { target: 'CAM_HACK_STUN' });
+          return;
+        }
+
+        const distToBarrel = Math.hypot(this.player.x - this.environmentObjects.explosiveBarrel.x, this.player.y - this.environmentObjects.explosiveBarrel.y);
+        if (distToBarrel < 80 && !this.environmentObjects.explosiveBarrel.detonated) {
+          this._detonateBarrel();
+          return;
+        }
+
+        const distToTurret = Math.hypot(this.player.x - this.environmentObjects.turret.x, this.player.y - this.environmentObjects.turret.y);
+        if (distToTurret < 75 && !this.environmentObjects.turret.hacked) {
+          this.environmentObjects.turret.hacked = true;
+          import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+            particleSystem.spawnDamageNumber(1180, 210, 'TURRET HACKED: ALLY ONLINE!', true, '#00ff88');
+          });
+          return;
+        }
+
         KaustubAPI.npcInteracted('INFORMANT_KIRA');
         eventBus.emit(EVENTS.CLUE_DISCOVERED, { target: 'INTERACTABLE_CLUE' });
       }
@@ -109,19 +158,60 @@ export class KaustubGameplayEngine {
       if (e.button === 0) {
         // Left Click = Light Attack (3-hit combo)
         this.player.attack(this.enemies, this.particleEffects);
+        // Check if hitting explosive barrel with attack
+        if (Math.hypot(this.player.x - 820, this.player.y - 350) < 95) {
+          this._detonateBarrel();
+        }
       } else if (e.button === 2) {
         // Right Click = Power activation after awakening, or Heavy Attack
         if (gameState.hasPower()) {
           this.powerSystem.activate(this.player, this.enemies, this.particleEffects);
         } else {
           this.player.heavyAttack(this.enemies, this.particleEffects);
+          if (Math.hypot(this.player.x - 820, this.player.y - 350) < 110) {
+            this._detonateBarrel();
+          }
         }
       }
     });
 
     window.addEventListener('contextmenu', (e) => {
-      // Prevent default context menu on right click during gameplay
       if (gameState.isPlaying()) e.preventDefault();
+    });
+  }
+
+  _detonateBarrel() {
+    if (this.environmentObjects.explosiveBarrel.detonated) return;
+    this.environmentObjects.explosiveBarrel.detonated = true;
+
+    const bx = this.environmentObjects.explosiveBarrel.x;
+    const by = this.environmentObjects.explosiveBarrel.y;
+
+    // Deal 85 explosion damage to all nearby enemies
+    this.enemies.forEach(en => {
+      if (en.isAlive && Math.hypot(en.x - bx, en.y - by) < 130) {
+        en.takeDamage(85, 'EXPLOSION');
+      }
+    });
+
+    // Check if player in blast radius
+    if (Math.hypot(this.player.x - bx, this.player.y - by) < 100) {
+      this.player.takeDamage(15, this.powerSystem);
+    }
+
+    import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+      particleSystem.spawnNova(bx, by, 160, '#ff5500');
+      particleSystem.spawnImpact(bx, by, '#ffaa00', 30);
+      particleSystem.spawnDamageNumber(bx, by - 20, '💥 85 EXPLOSION!', true, '#ff5500');
+    });
+
+    import('../visuals/ShaderPipeline.js').then(({ shaderPipeline }) => {
+      shaderPipeline.addShake(0.85);
+      shaderPipeline.triggerFlash('#ff5500', 0.4);
+    });
+
+    import('../visuals/AudioEngine.js').then(({ audioEngine }) => {
+      audioEngine.playImpact();
     });
   }
 
@@ -135,6 +225,10 @@ export class KaustubGameplayEngine {
     this.levelTransitionTimer = 0;
     this._warehouseObjectiveTriggered = false;
     this._areaTriggersChecked = {};
+    this.environmentObjects.cameraHack.hacked = false;
+    this.environmentObjects.explosiveBarrel.detonated = false;
+    this.environmentObjects.turret.hacked = false;
+    this.ally = null;
     this.exportRenderState();
   }
 
@@ -178,9 +272,23 @@ export class KaustubGameplayEngine {
     this.enemies = [
       new Enemy('enforcer_1', 600, 200, ENEMY_TYPES.ENFORCER),
       new Enemy('stalker_1', 750, 400, ENEMY_TYPES.STALKER),
-      new Enemy('enforcer_2', 900, 300, ENEMY_TYPES.ENFORCER),
+      new Enemy('disruptor_1', 900, 300, ENEMY_TYPES.DISRUPTOR),
       new Enemy('stalker_2', 1050, 500, ENEMY_TYPES.STALKER)
     ];
+
+    // Moral choice gameplay consequence: Rescued civilian / Resistance Ally appears
+    if (gameState.getPowerPath() === POWER_PATH.PROTECTIVE || gameState.getField('protectiveCount') > 0) {
+      this.ally = {
+        x: 250,
+        y: 320,
+        isAlive: true,
+        shootCooldown: 0,
+        healCooldown: 4.0
+      };
+      import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+        particleSystem.spawnDamageNumber(this.player.x, this.player.y - 30, 'RESISTANCE ALLY DEPLOYED!', true, '#00ff88');
+      });
+    }
 
     this.hero.x = 1300;
     this.hero.y = 300;
@@ -193,7 +301,7 @@ export class KaustubGameplayEngine {
     this.player.y = 300;
     this.enemies = [
       new Enemy('sentinel_1', 550, 250, ENEMY_TYPES.SENTINEL),
-      new Enemy('sentinel_2', 750, 450, ENEMY_TYPES.SENTINEL),
+      new Enemy('disruptor_2', 750, 450, ENEMY_TYPES.DISRUPTOR),
       new Enemy('enforcer_3', 950, 300, ENEMY_TYPES.ENFORCER)
     ];
 
@@ -224,6 +332,94 @@ export class KaustubGameplayEngine {
     const targetCamY = this.player.y - winH / 2;
     this.camera.x += (targetCamX - this.camera.x) * 0.12;
     this.camera.y += (targetCamY - this.camera.y) * 0.12;
+
+    // 1. Environmental Turret AI (if hacked by player)
+    if (this.environmentObjects.turret.hacked) {
+      this.environmentObjects.turret.cooldown -= dt;
+      if (this.environmentObjects.turret.cooldown <= 0) {
+        // Target nearest alive enemy
+        let nearestEnemy = null;
+        let minDist = 450;
+        this.enemies.forEach(en => {
+          if (en.isAlive) {
+            const d = Math.hypot(en.x - 1180, en.y - 250);
+            if (d < minDist) {
+              minDist = d;
+              nearestEnemy = en;
+            }
+          }
+        });
+
+        if (nearestEnemy) {
+          this.environmentObjects.turret.cooldown = 1.2;
+          const angle = Math.atan2(nearestEnemy.y - 250, nearestEnemy.x - 1180);
+          this.projectiles.push({
+            x: 1180,
+            y: 250,
+            vx: Math.cos(angle) * 450,
+            vy: Math.sin(angle) * 450,
+            damage: 35,
+            radius: 5,
+            color: '#00ff88',
+            isHostile: false,
+            life: 1.8
+          });
+        }
+      }
+    }
+
+    // 2. Resistance Ally AI (Level 2)
+    if (this.ally && this.ally.isAlive) {
+      // Follow player at distance
+      const distToPlayer = Math.hypot(this.player.x - this.ally.x, this.player.y - this.ally.y);
+      if (distToPlayer > 80) {
+        const angle = Math.atan2(this.player.y - this.ally.y, this.player.x - this.ally.x);
+        this.ally.x += Math.cos(angle) * 120 * dt;
+        this.ally.y += Math.sin(angle) * 120 * dt;
+      }
+
+      // Shoot at nearest enemy
+      this.ally.shootCooldown -= dt;
+      if (this.ally.shootCooldown <= 0) {
+        let nearest = null;
+        let minDist = 380;
+        this.enemies.forEach(en => {
+          if (en.isAlive) {
+            const d = Math.hypot(en.x - this.ally.x, en.y - this.ally.y);
+            if (d < minDist) {
+              minDist = d;
+              nearest = en;
+            }
+          }
+        });
+
+        if (nearest) {
+          this.ally.shootCooldown = 1.4;
+          const angle = Math.atan2(nearest.y - this.ally.y, nearest.x - this.ally.x);
+          this.projectiles.push({
+            x: this.ally.x,
+            y: this.ally.y,
+            vx: Math.cos(angle) * 400,
+            vy: Math.sin(angle) * 400,
+            damage: 20,
+            radius: 4,
+            color: '#00ff88',
+            isHostile: false,
+            life: 1.5
+          });
+        }
+      }
+
+      // Heal player periodically
+      this.ally.healCooldown -= dt;
+      if (this.ally.healCooldown <= 0) {
+        this.ally.healCooldown = 6.0;
+        KaustubAPI.playerHeal(12);
+        import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+          particleSystem.spawnDamageNumber(this.player.x, this.player.y - 20, '+12 ALLY HEAL', false, '#00ff88');
+        });
+      }
+    }
 
     // Check dynamic area triggers & warehouse target zone collision (< 50px radius)
     if (this.currentScene === 'LEVEL_1' || this.currentScene === 'CITY_NORMAL') {
@@ -265,7 +461,7 @@ export class KaustubGameplayEngine {
       }
 
       // Electrical Puddle Hazard (x: 700, y: 480)
-      if (Math.hypot(this.player.x - 700, this.player.y - 480) < 45) {
+      if (Math.hypot(this.player.x - 700, this.player.y - 480) < 50) {
         if (Math.random() < 0.08) {
           this.player.takeDamage(4, this.powerSystem);
           import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
@@ -273,6 +469,14 @@ export class KaustubGameplayEngine {
           });
         }
       }
+
+      // Puddle shocks enemies
+      this.enemies.forEach(en => {
+        if (en.isAlive && Math.hypot(en.x - 700, en.y - 480) < 50) {
+          en.takeDamage(20 * dt, 'SHOCK');
+          en.applyStasis(0.8);
+        }
+      });
     } else if (this.currentScene === 'LEVEL_2') {
       if (this.player.x > 450) {
         KaustubAPI.playerEscapedArea('PATROL_ZONE');
@@ -299,7 +503,7 @@ export class KaustubGameplayEngine {
       this.hero.update(dt, this.player, this.powerSystem, this.projectiles, this.particleEffects);
     }
 
-    // Update Projectiles
+    // Update Projectiles (both hostile and friendly)
     this.projectiles = this.projectiles.filter(p => {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
@@ -310,6 +514,21 @@ export class KaustubGameplayEngine {
         if (dist <= this.player.radius + p.radius) {
           this.player.takeDamage(p.damage, this.powerSystem);
           return false;
+        }
+      } else {
+        // Friendly projectile hits enemies
+        for (let enemy of this.enemies) {
+          if (enemy.isAlive) {
+            const dist = Math.hypot(p.x - enemy.x, p.y - enemy.y);
+            if (dist <= enemy.radius + p.radius) {
+              enemy.takeDamage(p.damage, 'PROJECTILE');
+              import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+                particleSystem.spawnDamageNumber(enemy.x, enemy.y, p.damage, false, '#00ff88');
+                particleSystem.spawnImpact(enemy.x, enemy.y, '#00ff88', 8);
+              });
+              return false;
+            }
+          }
         }
       }
 
@@ -378,6 +597,8 @@ export class KaustubGameplayEngine {
         state: this.hero.state,
         dialogueText: this.hero.dialogueText
       },
+      ally: this.ally ? { x: this.ally.x, y: this.ally.y, isAlive: this.ally.isAlive } : null,
+      environmentObjects: this.environmentObjects,
       projectiles: this.projectiles.map(p => ({ x: p.x, y: p.y, radius: p.radius, color: p.color })),
       particles: this.particleEffects.map(pt => ({ x: pt.x, y: pt.y, radius: pt.radius, color: pt.color, type: pt.type }))
     };

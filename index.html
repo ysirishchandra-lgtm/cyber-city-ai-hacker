@@ -248,54 +248,43 @@
 </head>
 <body>
 
-  <!-- 1. Canvas Background -->
-  <canvas id="bg-canvas"></canvas>
-  <div class="neon-grid"></div>
+  <!-- 1. Canvas Layers -->
+  <canvas id="scar-canvas" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2;"></canvas>
+  <canvas id="bg-canvas" style="display:none;"></canvas>
 
-  <!-- 3. Map Layer -->
-  <div id="map-layer">
-    <!-- Waypoints (Positions are arbitrary for demo) -->
-    <div class="waypoint" style="top: 30%; left: 20%;">
-      <div class="waypoint-label">SAFE HOUSE <br/><span style="color:#888;">[0m]</span></div>
-    </div>
-    <div class="waypoint" style="top: 40%; left: 60%; background: var(--neon-amber); box-shadow: 0 0 20px var(--neon-amber);">
-      <div class="waypoint-label" style="border-color: var(--neon-amber);">SERVER STATION <br/><span style="color:#888;">[450m]</span></div>
-    </div>
-    <div class="waypoint" style="top: 70%; left: 80%; background: var(--neon-red); box-shadow: 0 0 20px var(--neon-red);">
-      <div class="waypoint-label" style="border-color: var(--neon-red);">THE TOWER <br/><span style="color:#888;">[1.2km]</span></div>
-    </div>
-  </div>
-
-  <!-- 2. HUD Layer -->
-  <div id="hud-layer">
-    <!-- Player Status -->
-    <div id="player-status" class="hud-panel">
-      <div>CYBERWARE INTEGRITY</div>
-      <div class="status-bar"><div id="integrity-fill" class="status-fill"></div></div>
-      
-      <div>STAMINA RESERVE</div>
-      <div class="status-bar"><div id="stamina-fill" class="status-fill"></div></div>
-      
-      <div>DETECTION THREAT</div>
-      <div class="status-bar"><div id="detection-fill" class="status-fill"></div></div>
-    </div>
-
-    <!-- Mission Tracker -->
-    <div id="mission-banner">
-      <div style="font-size: 1.2rem;">MISSION 1: THE INFILTRATION</div>
-      <div class="mission-steps">
-        <span class="step-active">INFILTRATE</span> &gt; HACK &gt; ESCAPE
+  <!-- Start Screen & Hackathon Judge Demo Selector -->
+  <div id="start-screen" class="modal-overlay active" style="z-index: 150;">
+    <div class="modal-content" style="max-width: 680px; text-align: center; border-color: var(--neon-cyan);">
+      <div style="font-family: 'Orbitron', sans-serif; font-size: 2.2rem; font-weight: 900; color: #00f3ff; text-shadow: 0 0 20px #00f3ff; margin-bottom: 5px;">
+        SCAR: THE LAST CHOICE
       </div>
-    </div>
+      <div style="color: #ff0055; font-size: 0.95rem; font-weight: bold; letter-spacing: 2px; margin-bottom: 20px;">
+        EVERYONE HAS A SUPERPOWER. YOU HAVE ZERO.
+      </div>
+      <p style="color: #aaa; font-size: 0.85rem; line-height: 1.6; margin-bottom: 20px; text-align: left; background: rgba(0,0,0,0.5); padding: 12px; border-left: 3px solid #00f3ff;">
+        <b>CONTROLS:</b><br/>
+        • <b>WASD</b>: Fluid 8-Directional Movement &nbsp;|&nbsp; <b>SHIFT</b>: Sprint &nbsp;|&nbsp; <b>SPACE</b>: 360° Dodge Roll<br/>
+        • <b>LEFT CLICK</b>: 3-Hit Melee Combo Strike &nbsp;|&nbsp; <b>RIGHT CLICK</b>: 360° Heavy Finisher / Power<br/>
+        • <b>E KEY</b>: Execution Finisher / Clues / Hack Cam & Turrets &nbsp;|&nbsp; <b>Q / R / G</b>: Adapt / Evolve / Glitch
+      </p>
 
-    <!-- Countdown Timer -->
-    <div id="timer-hud">30:00:00</div>
+      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <input type="text" id="player-name" placeholder="ENTER OPERATIVE CODENAME..." value="Operative" style="flex: 1; background: #050508; border: 1px solid #00f3ff; color: #fff; padding: 10px 15px; font-family: 'Share Tech Mono', monospace; font-size: 1rem; outline: none;"/>
+        <button id="btn-start" class="btn-holo" style="padding: 10px 25px; font-size: 1.1rem; font-weight: bold;">INITIALIZE RUN</button>
+      </div>
 
-    <!-- Action Buttons -->
-    <div id="action-cluster">
-      <button class="btn-holo" onclick="openModal('transmission-modal')">SYS_LOG</button>
-      <button class="btn-holo" onclick="openModal('hack-modal')">INIT_HACK</button>
-      <button class="btn-holo red" onclick="openModal('choice-modal')">END_SEQUENCE</button>
+      <div style="border-top: 1px solid rgba(0, 243, 255, 0.3); padding-top: 15px; text-align: left;">
+        <div style="font-size: 0.85rem; color: #ffb700; font-weight: bold; margin-bottom: 10px; letter-spacing: 1px;">
+          ⚡ HACKATHON JUDGE RAPID DEMO SELECTOR (5-MINUTE ROUTE):
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button class="btn-holo" style="font-size: 0.8rem; padding: 8px;" onclick="window.__SCAR_DEMO_JUMP__ && window.__SCAR_DEMO_JUMP__('LEVEL_1')">▶ LEVEL 1: RAIN DISTRICT</button>
+          <button class="btn-holo" style="font-size: 0.8rem; padding: 8px; border-color: #ff0055; color: #ff0055;" onclick="window.__SCAR_DEMO_JUMP__ && window.__SCAR_DEMO_JUMP__('BOSS_1')">⚡ BOSS 1 & [Q] ADAPT</button>
+          <button class="btn-holo" style="font-size: 0.8rem; padding: 8px; border-color: #00ff88; color: #00ff88;" onclick="window.__SCAR_DEMO_JUMP__ && window.__SCAR_DEMO_JUMP__('LEVEL_2')">▶ LEVEL 2 & [R] EVOLVE</button>
+          <button class="btn-holo" style="font-size: 0.8rem; padding: 8px; border-color: #aa00ff; color: #aa00ff;" onclick="window.__SCAR_DEMO_JUMP__ && window.__SCAR_DEMO_JUMP__('LEVEL_3')">▶ LEVEL 3 & [G] GLITCH</button>
+          <button class="btn-holo red" style="grid-column: span 2; font-size: 0.8rem; padding: 8px;" onclick="window.__SCAR_DEMO_JUMP__ && window.__SCAR_DEMO_JUMP__('FINAL_CHOICE')">🏆 FINAL CHOICE & 4 ENDINGS</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -431,7 +420,11 @@
     }, 1000);
 
     // Initial load
-    setTimeout(() => openModal('transmission-modal'), 500);
+    setTimeout(() => {
+      // Keep start-screen active for judge interaction
+    }, 500);
   </script>
+  <!-- SCAR Master Web Game Engine Entrypoint -->
+  <script type="module" src="./src/game.js"></script>
 </body>
 </html>

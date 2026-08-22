@@ -398,17 +398,20 @@ export class CityEnvironment {
 
   _renderWorldInteractables(ctx) {
     const time = this._time;
+    const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : null;
+    const env = gameplayState?.environmentObjects;
 
-    // 1. Security Camera Clue (x: 480, y: 220)
+    // 1. Security Camera Clue / Hackable Sensor (x: 480, y: 220)
+    const isCamHacked = env?.cameraHack?.hacked;
     ctx.save();
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = isCamHacked ? '#064e3b' : '#1e293b';
     ctx.fillRect(470, 190, 20, 30);
-    ctx.fillStyle = '#00f3ff';
-    ctx.shadowColor = '#00f3ff';
+    ctx.fillStyle = isCamHacked ? '#00ff88' : '#00f3ff';
+    ctx.shadowColor = isCamHacked ? '#00ff88' : '#00f3ff';
     ctx.shadowBlur = 10;
     ctx.beginPath(); ctx.arc(480, 220, 5, 0, Math.PI * 2); ctx.fill();
     // Scanning cone
-    ctx.fillStyle = 'rgba(0, 243, 255, 0.1)';
+    ctx.fillStyle = isCamHacked ? 'rgba(0, 255, 136, 0.15)' : 'rgba(0, 243, 255, 0.1)';
     ctx.beginPath();
     ctx.moveTo(480, 220);
     ctx.lineTo(430 + Math.sin(time * 2) * 30, 300);
@@ -417,37 +420,55 @@ export class CityEnvironment {
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('[E] CAM CLUE', 480, 180);
+    ctx.fillText(isCamHacked ? '✓ CAM OVERLOAD' : '[E] HACK CAM', 480, 180);
     ctx.restore();
 
-    // 2. Broken Cyber-Weapon Clue (x: 820, y: 350)
+    // 2. Explosive Plasma Barrel (x: 820, y: 350)
+    const isDetonated = env?.explosiveBarrel?.detonated;
     ctx.save();
-    ctx.strokeStyle = '#ffb700';
-    ctx.lineWidth = 2;
-    ctx.shadowColor = '#ffb700';
-    ctx.shadowBlur = 12;
-    ctx.beginPath();
-    ctx.arc(820, 350, 14 + Math.sin(time * 4) * 3, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = '#ffb700';
-    ctx.font = 'bold 9px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('[E] WEAPON CLUE', 820, 325);
+    if (!isDetonated) {
+      ctx.fillStyle = '#ff2200';
+      ctx.strokeStyle = '#ffcc00';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#ff2200';
+      ctx.shadowBlur = 12;
+      ctx.fillRect(808, 335, 24, 30);
+      ctx.strokeRect(808, 335, 24, 30);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡ TNT', 820, 352);
+      ctx.fillStyle = '#ffcc00';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText('[E / HIT] 💥 BARREL', 820, 325);
+    } else {
+      // Scorched crater
+      ctx.fillStyle = 'rgba(20, 20, 20, 0.75)';
+      ctx.beginPath();
+      ctx.ellipse(820, 350, 28, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 68, 0, 0.4)';
+      ctx.stroke();
+    }
     ctx.restore();
 
-    // 3. Syndicate Access Terminal (x: 1180, y: 250)
+    // 3. Security Defense Turret (x: 1180, y: 250)
+    const isTurretHacked = env?.turret?.hacked;
     ctx.save();
     ctx.fillStyle = '#0f172a';
-    ctx.strokeStyle = '#00ff88';
-    ctx.lineWidth = 2;
-    ctx.shadowColor = '#00ff88';
+    ctx.strokeStyle = isTurretHacked ? '#00ff88' : '#ff0055';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = isTurretHacked ? '#00ff88' : '#ff0055';
     ctx.shadowBlur = 14;
     ctx.fillRect(1165, 220, 30, 45);
     ctx.strokeRect(1165, 220, 30, 45);
-    ctx.fillStyle = '#00ff88';
+    // Turret barrel
+    ctx.fillStyle = isTurretHacked ? '#00ff88' : '#ff0055';
+    ctx.fillRect(1175, 205, 10, 15);
+    ctx.fillStyle = isTurretHacked ? '#00ff88' : '#ff0055';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('[E] TERMINAL', 1180, 210);
+    ctx.fillText(isTurretHacked ? '✓ ALLY TURRET' : '[E] HACK TURRET', 1180, 195);
     ctx.restore();
 
     // 4. Electrical Puddle Hazard (x: 700, y: 480)
@@ -470,10 +491,28 @@ export class CityEnvironment {
     ctx.fillStyle = '#ff0055';
     ctx.font = 'bold 8px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('⚡ HAZARD', 700, 455);
+    ctx.fillText('⚡ SHOCK HAZARD', 700, 455);
     ctx.restore();
 
-    // 5. Warehouse Infiltration Gate (x: 1450, y: 280)
+    // 5. Resistance Ally (Level 2 Moral Choice Follower)
+    if (gameplayState?.ally && gameplayState.ally.isAlive) {
+      const ax = gameplayState.ally.x;
+      const ay = gameplayState.ally.y;
+      ctx.save();
+      ctx.fillStyle = '#00ff88';
+      ctx.shadowColor = '#00ff88';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(ax, ay, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('ALLY', ax, ay - 16);
+      ctx.restore();
+    }
+
+    // 6. Warehouse Infiltration Gate (x: 1450, y: 280)
     ctx.save();
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(1430, 160, 40, 140);

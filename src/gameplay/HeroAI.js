@@ -33,6 +33,9 @@ export class HeroAI {
     this.inFinalBattle = false;
     this.attackCooldown = 0;
     this.stateTimer = 0;
+    this.meleeHitsTakenStreak = 0;
+    this.parryShieldTimer = 0;
+    this.blinkCooldown = 0;
 
     this.dialogueText = '';
     this.dialogueTimer = 0;
@@ -56,7 +59,7 @@ export class HeroAI {
   startFinalBattle() {
     this.inFinalBattle = true;
     this.state = HERO_STATES.COUNTER;
-    this.showDialogue("If you will not turn back, I will end this myself!");
+    this.showDialogue("If you will not turn back, I will adapt and end this myself!");
     eventBus.emit(EVENTS.FINAL_BATTLE_STARTED, { heroState: this.state });
   }
 
@@ -70,6 +73,8 @@ export class HeroAI {
 
     if (this.attackCooldown > 0) this.attackCooldown -= dt;
     if (this.dialogueTimer > 0) this.dialogueTimer -= dt;
+    if (this.parryShieldTimer > 0) this.parryShieldTimer -= dt;
+    if (this.blinkCooldown > 0) this.blinkCooldown -= dt;
 
     const dx = player.x - this.x;
     const dy = player.y - this.y;
@@ -81,17 +86,30 @@ export class HeroAI {
     let attackDelay = 1.6;
 
     if (playerPath === POWER_PATH.AGGRESSIVE || playerPath === 'DESTRUCTION') {
-      // Aggressive player -> Hero becomes aggressive
       aggressionFactor = 1.5;
       attackDelay = 1.0;
     } else if (playerPath === POWER_PATH.PROTECTIVE || playerPath === 'PROTECTION') {
-      // Protective player -> Hero becomes hesitant
       aggressionFactor = 0.8;
-      attackDelay = 2.2;
+      attackDelay = 2.0;
     } else if (playerPath === POWER_PATH.STRATEGIC || playerPath === 'CONTROL') {
-      // Strategic player -> Hero becomes cautious
-      aggressionFactor = 1.1;
-      attackDelay = 1.8;
+      aggressionFactor = 1.2;
+      attackDelay = 1.5;
+    }
+
+    // Adaptive Counter 1: Blink Dash to close distance if player kites from afar
+    if (this.inFinalBattle && dist > 260 && this.blinkCooldown <= 0) {
+      this.blinkCooldown = 4.5;
+      const blinkAngle = Math.atan2(dy, dx);
+      this.x += Math.cos(blinkAngle) * 140;
+      this.y += Math.sin(blinkAngle) * 140;
+      this.showDialogue("You cannot outrun the grid!");
+      import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+        particleSystem.spawnNova(this.x, this.y, 110, '#00ffff');
+        particleSystem.spawnDamageNumber(this.x, this.y - 30, '⚡ ATLAS BLINK', true, '#00f3ff');
+      });
+      import('../visuals/ShaderPipeline.js').then(({ shaderPipeline }) => {
+        shaderPipeline.triggerGlitch(0.3);
+      });
     }
 
     switch (this.state) {
@@ -123,12 +141,11 @@ export class HeroAI {
           this.x += (dx / dist) * (this.speed * aggressionFactor) * dt;
           this.y += (dy / dist) * (this.speed * aggressionFactor) * dt;
         } else if (playerPath === POWER_PATH.STRATEGIC && dist < 180) {
-          // Keep tactical distance against Strategic control player
           this.x -= (dx / dist) * this.speed * dt;
           this.y -= (dy / dist) * this.speed * dt;
         }
 
-        if (dist <= 200 && this.attackCooldown <= 0) {
+        if (dist <= 220 && this.attackCooldown <= 0) {
           this.attackCooldown = attackDelay;
           this.executeHeroAttack(player, dx, dy, dist, projectiles, particleEffects, playerPath);
         }
@@ -186,6 +203,26 @@ export class HeroAI {
   takeDamage(amount, powerSystem) {
     if (!this.isAlive) return;
 
+    // Adaptive Counter 2: Parry Deflection if player lands rapid melee hits
+    if (this.parryShieldTimer > 0) {
+      // Absorb damage
+      import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+        particleSystem.spawnDamageNumber(this.x, this.y - 20, '🛡️ ATLAS PARRY DEFLECT', true, '#ffcc00');
+        particleSystem.spawnImpact(this.x, this.y, '#ffcc00', 12);
+      });
+      return;
+    }
+
+    this.meleeHitsTakenStreak++;
+    if (this.meleeHitsTakenStreak >= 3) {
+      this.meleeHitsTakenStreak = 0;
+      this.parryShieldTimer = 2.0; // 2 seconds deflection shield
+      this.showDialogue("Predictable rhythm. Deflection matrix engaged!");
+      import('../visuals/ShaderPipeline.js').then(({ shaderPipeline }) => {
+        shaderPipeline.triggerFlash('#ffcc00', 0.4);
+      });
+    }
+
     this.health -= amount;
 
     if (amount >= 35 && this.state === HERO_STATES.COUNTER) {
@@ -210,6 +247,17 @@ export class HeroAI {
 
     ctx.save();
     ctx.translate(screenX, screenY);
+
+    // Parry Deflection Shield Visual
+    if (this.parryShieldTimer > 0) {
+      ctx.beginPath();
+      ctx.arc(0, 0, this.radius + 14, 0, Math.PI * 2);
+      ctx.strokeStyle = '#ffcc00';
+      ctx.lineWidth = 3.5;
+      ctx.shadowColor = '#ffcc00';
+      ctx.shadowBlur = 16;
+      ctx.stroke();
+    }
 
     ctx.beginPath();
     ctx.arc(0, 0, this.radius + 8, 0, Math.PI * 2);
@@ -260,7 +308,7 @@ export class HeroAI {
       ctx.fillRect(barX, barY, barWidth, barHeight);
 
       const hpRatio = this.health / this.maxHealth;
-      ctx.fillStyle = '#00ffff';
+      ctx.fillStyle = this.parryShieldTimer > 0 ? '#ffcc00' : '#00ffff';
       ctx.fillRect(barX, barY, barWidth * hpRatio, barHeight);
     }
   }

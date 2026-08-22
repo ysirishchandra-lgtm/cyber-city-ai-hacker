@@ -148,8 +148,7 @@ export class Player {
     this.executeTarget = null;
 
     // Heal player on brutal finisher
-    const currentHp = gameState.getField('health');
-    gameState.setHealth(Math.min(100, currentHp + 25));
+    KaustubAPI.playerHeal(25);
 
     import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
       particleSystem.spawnDamageNumber(enemy.x, enemy.y, 'EXECUTION 150!', true, '#ff0033');
