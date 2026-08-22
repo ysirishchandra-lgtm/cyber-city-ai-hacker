@@ -289,36 +289,17 @@ export class CyberHUD {
     ctx.save();
     const pulse = Math.sin(this._time * 5) * 3;
     const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : null;
-    const player = gameplayState?.player;
-    const phase = state?.phase || 'LEVEL_1';
-
-    let targetX = 900;
-    let targetY = 350;
-    let objTitle = 'INFILTRATE WAREHOUSE';
-
-    if (phase === 'LEVEL_2') {
-      targetX = 1400;
-      targetY = 400;
-      objTitle = 'EVADE TRANSIT PATROLS';
-    } else if (phase === 'LEVEL_3' || phase === 'FINAL_BATTLE') {
-      targetX = 1300;
-      targetY = 480;
-      objTitle = 'CONFRONT ATLAS THE PRODIGY';
-    }
-
-    const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : null;
     const isLevel2 = gameplayState?.currentScene === 'LEVEL_2';
     const isLevel3 = gameplayState?.currentScene === 'LEVEL_3' || gameplayState?.currentScene === 'FINAL_BATTLE';
 
     let distMeters = 0;
     let isCompleted = false;
     let objTitle = 'REACH THE WAREHOUSE';
+    let targetX = 900;
+    let targetY = 350;
+    let targetRadius = 50;
 
     if (gameplayState && gameplayState.player) {
-      let targetX = 900;
-      let targetY = 350;
-      let targetRadius = 50;
-
       if (isLevel2) {
         // In Level 2: Point to trapped civilians or rooftop station (1300, 300)
         const unrescuedCiv = gameplayState.trappedCivilians?.find(c => !c.rescued);
@@ -355,6 +336,10 @@ export class CyberHUD {
         isCompleted = true;
       }
     }
+
+    const angleToTarget = (gameplayState && gameplayState.player)
+      ? Math.atan2(targetY - gameplayState.player.y, targetX - gameplayState.player.x)
+      : 0;
 
     // Tactical Hexagonal Visor Objective Badge
     const badgeW = 260;
