@@ -490,6 +490,7 @@ export class CityEnvironment {
   }
 
   _renderMissionWaypoints(ctx, activeObjectives = []) {
+    const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : null;
 
     const areaCoordinates = {
       'SAFEHOUSE_L1': { x: 900, y: 350, label: 'WAREHOUSE / SAFEHOUSE' },

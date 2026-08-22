@@ -87,13 +87,18 @@ async function runMasterE2E() {
     if (gameState.getPhase() !== GAME_PHASE.LEVEL_1) throw new Error('Failed to reach Level 1');
 
     // Combat & objectives
-    kaustubEngine.player.x = 400;
+    kaustubEngine.player.x = 900;
+    kaustubEngine.player.y = 350;
     kaustubEngine.update(gameState.get(), 0.016);
     await new Promise(r => setTimeout(r, 1600));
 
-    kaustubEngine.player.x = 550;
+    kaustubEngine.player.x = 400;
+    kaustubEngine.player.y = 300;
     kaustubEngine.update(gameState.get(), 0.016);
     await new Promise(r => setTimeout(r, 1600));
+
+    kaustubEngine.player.x = 750;
+    kaustubEngine.player.y = 300;
     kaustubEngine.update(gameState.get(), 0.016);
 
     // Defeat Level 1 enemies
