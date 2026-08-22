@@ -19,6 +19,7 @@ import { characterRenderer } from '../visuals/CharacterRenderer.js';
 import { cinematicsEngine } from '../visuals/CinematicsEngine.js';
 import { cyberHUD } from '../visuals/CyberHUD.js';
 import { dialogueAndChoiceUI } from '../visuals/DialogueAndChoiceUI.js';
+import { threeJSRenderer3D } from '../visuals/ThreeJSRenderer3D.js';
 
 import { ENDING, POWER_PATH } from '../core/GameState.js';
 import { eventBus, EVENTS } from '../core/EventBus.js';
@@ -49,7 +50,17 @@ export class PrototypeRenderer {
     this._ctx = this._canvas.getContext('2d');
     this._resize();
 
-    window.addEventListener('resize', () => this._resize());
+    // Initialize 3D Three.js WebGL Renderer
+    try {
+      await threeJSRenderer3D.init(this._canvas);
+    } catch (err) {
+      console.warn('[PrototypeRenderer] ThreeJS 3D initialization fallback:', err);
+    }
+
+    window.addEventListener('resize', () => {
+      this._resize();
+      if (threeJSRenderer3D.initialized) threeJSRenderer3D.resize();
+    });
     window.addEventListener('keydown', (e) => this._handleKey(e));
     window.addEventListener('click', (e) => this._handleClick(e));
     window.addEventListener('mousemove', (e) => this._handleMouseMove(e));
@@ -180,8 +191,12 @@ export class PrototypeRenderer {
         });
       } catch (e) {}
 
-      // A. Render City Environment
-      cityEnvironment.render(ctx, this.camera, activeObjectives);
+      // A. Render 3D WebGL Scene if initialized
+      if (threeJSRenderer3D.initialized) {
+        threeJSRenderer3D.render(gameplayState);
+      } else {
+        cityEnvironment.render(ctx, this.camera, activeObjectives);
+      }
 
       // B. Render World Entities
       if (gameplayState) {
