@@ -390,7 +390,7 @@ export class CityEnvironment {
     // ─── Layer 4: Interactable Objects, Clues, Hazards & Landmarks ─────────
     this._renderWorldInteractables(ctx);
 
-    // ─── Layer 5: Mission Waypoint Beacons ───────────────────────────────────
+    // ─── Layer 5: Mission Waypoint Beacons & Cyan Target Discs ──────────────
     this._renderMissionWaypoints(ctx, activeObjectives);
 
     ctx.restore();
@@ -489,43 +489,97 @@ export class CityEnvironment {
     ctx.restore();
   }
 
-  _renderMissionWaypoints(ctx, activeObjectives) {
-    if (!activeObjectives || activeObjectives.length === 0) return;
+  _renderMissionWaypoints(ctx, activeObjectives = []) {
 
     const areaCoordinates = {
-      'SAFEHOUSE_L1': { x: 900, y: 350, label: 'SAFEHOUSE' },
+      'SAFEHOUSE_L1': { x: 900, y: 350, label: 'WAREHOUSE / SAFEHOUSE' },
       'OLD_DISTRICT': { x: 750, y: 300, label: 'OLD DISTRICT' },
       'ROOFTOP_MEETING': { x: 1300, y: 300, label: 'ROOFTOP CONFRONTATION' },
       'ATLAS_DISTRICT': { x: 1800, y: 350, label: 'ATLAS HEADQUARTERS' },
       'PATROL_ZONE': { x: 950, y: 400, label: 'PATROL ZONE' }
     };
 
-    activeObjectives.forEach(obj => {
+    // Always ensure Level 1 Warehouse Waypoint is visible if in Level 1
+    const targetsToRender = [...(activeObjectives || [])];
+    if (targetsToRender.length === 0 || !targetsToRender.some(o => o.target?.areaId === 'SAFEHOUSE_L1')) {
+      targetsToRender.push({ target: { areaId: 'SAFEHOUSE_L1' } });
+    }
+
+    targetsToRender.forEach(obj => {
       const areaId = obj.target?.areaId;
       const targetPos = areaCoordinates[areaId];
       if (targetPos) {
         ctx.save();
-        const pulse = Math.sin(this._time * 4) * 6;
-        const color = '#00f3ff';
+        const pulse = Math.sin(this._time * 4.5) * 4;
+        const isWarehouse = areaId === 'SAFEHOUSE_L1';
+        const isCompleted = isWarehouse && gameplayState?.warehouseTarget?.completed;
+        const color = isCompleted ? '#00ff88' : '#00f3ff';
+        const targetRadius = 50; // < 50px radius target disc
 
+        // 1. Semi-transparent Glowing Cyan Ground Fill Disc
+        const discGrad = ctx.createRadialGradient(
+          targetPos.x, targetPos.y, 5,
+          targetPos.x, targetPos.y, targetRadius + pulse
+        );
+        discGrad.addColorStop(0, isCompleted ? 'rgba(0, 255, 136, 0.45)' : 'rgba(0, 243, 255, 0.4)');
+        discGrad.addColorStop(0.7, isCompleted ? 'rgba(0, 255, 136, 0.18)' : 'rgba(0, 243, 255, 0.15)');
+        discGrad.addColorStop(1, 'rgba(0, 243, 255, 0)');
+        ctx.fillStyle = discGrad;
+        ctx.beginPath();
+        ctx.arc(targetPos.x, targetPos.y, targetRadius + pulse, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2. Outer Concentric Cyan Shockwave Ring
         ctx.strokeStyle = color;
         ctx.lineWidth = 2.5;
         ctx.shadowColor = color;
         ctx.shadowBlur = 18;
         ctx.beginPath();
-        ctx.ellipse(targetPos.x, targetPos.y + 20, 48 + pulse, 24 + pulse * 0.5, 0, 0, Math.PI * 2);
+        ctx.arc(targetPos.x, targetPos.y, targetRadius + pulse, 0, Math.PI * 2);
         ctx.stroke();
 
-        const pillarGrad = ctx.createLinearGradient(targetPos.x, targetPos.y + 20, targetPos.x, targetPos.y - 130);
-        pillarGrad.addColorStop(0, 'rgba(0, 243, 255, 0.45)');
+        // 3. Inner Rotating Concentric Ring & Chevrons
+        const rotAngle = this._time * 1.5;
+        ctx.save();
+        ctx.translate(targetPos.x, targetPos.y);
+        ctx.rotate(rotAngle);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([12, 8]);
+        ctx.beginPath();
+        ctx.arc(0, 0, 30, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // 4. Vertical Holographic Light Column
+        const pillarGrad = ctx.createLinearGradient(targetPos.x, targetPos.y, targetPos.x, targetPos.y - 160);
+        pillarGrad.addColorStop(0, isCompleted ? 'rgba(0, 255, 136, 0.4)' : 'rgba(0, 243, 255, 0.4)');
+        pillarGrad.addColorStop(0.6, isCompleted ? 'rgba(0, 255, 136, 0.15)' : 'rgba(0, 243, 255, 0.12)');
         pillarGrad.addColorStop(1, 'rgba(0, 243, 255, 0)');
         ctx.fillStyle = pillarGrad;
-        ctx.fillRect(targetPos.x - 22, targetPos.y - 130, 44, 150);
+        ctx.fillRect(targetPos.x - 24, targetPos.y - 160, 48, 160);
 
+        // 5. Calculate Real-Time Player Distance
+        let distText = '';
+        if (gameplayState && gameplayState.player) {
+          const pDist = Math.hypot(targetPos.x - gameplayState.player.x, targetPos.y - gameplayState.player.y);
+          const pMeters = Math.max(0, Math.round((pDist - targetRadius) / 5.1));
+          distText = isCompleted ? '[ ZONE SECURED ]' : `[ ${pMeters}m ]`;
+        }
+
+        // 6. Floating Holographic Diamond & Label Banner
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 12px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(`▼ ${targetPos.label}`, targetPos.x, targetPos.y - 140 + pulse * 0.5);
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 12;
+        ctx.fillText(`▼ ${targetPos.label}`, targetPos.x, targetPos.y - 170 + pulse * 0.5);
+
+        if (distText) {
+          ctx.fillStyle = color;
+          ctx.font = 'bold 10px monospace';
+          ctx.fillText(distText, targetPos.x, targetPos.y - 155 + pulse * 0.5);
+        }
 
         ctx.restore();
       }

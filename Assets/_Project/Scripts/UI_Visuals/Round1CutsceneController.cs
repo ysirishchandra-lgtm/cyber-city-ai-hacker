@@ -8,6 +8,10 @@ using Scar.Core;
 
 namespace Scar.UI_Visuals
 {
+    /// <summary>
+    /// Manages the Round 1 Cutscene intro, video player (scar1.mp4), non-looping playback,
+    /// transition to the stylized "ROUND 1 — FIND THE FOUR" splash banner, and CyberHUD boot-up.
+    /// </summary>
     public class Round1CutsceneController : MonoBehaviour
     {
         [Header("Video Setup")]
@@ -19,7 +23,6 @@ namespace Scar.UI_Visuals
         [SerializeField] private GameObject _lobbyCanvas;
         [SerializeField] private GameObject _gameplayCanvas;
         [SerializeField] private CyberHUD _cyberHUD;
-        // Optionally, reference to PlayerController or Scene loader depending on how Unity is structured
         
         private bool _isPlaying = false;
         private bool _isSkipped = false;
@@ -30,6 +33,12 @@ namespace Scar.UI_Visuals
         {
             if (Instance == null) Instance = this;
             else Destroy(gameObject);
+
+            // Strictly disable video looping
+            if (_videoPlayer != null)
+            {
+                _videoPlayer.isLooping = false;
+            }
         }
 
         private void Start()
@@ -49,7 +58,7 @@ namespace Scar.UI_Visuals
         {
             if (_isPlaying && !_isSkipped)
             {
-                if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Escape))
+                if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonDown(0))
                 {
                     SkipCutscene();
                 }
@@ -71,7 +80,7 @@ namespace Scar.UI_Visuals
             if (_cutsceneCanvasGroup != null)
             {
                 _cutsceneCanvasGroup.gameObject.SetActive(true);
-                yield return StartCoroutine(FadeCanvasGroup(_cutsceneCanvasGroup, 0f, 1f, 0.5f));
+                yield return StartCoroutine(FadeCanvasGroup(_cutsceneCanvasGroup, 0f, 1f, 0.4f));
             }
 
             if (_skipPromptOverlay != null)
@@ -81,8 +90,8 @@ namespace Scar.UI_Visuals
 
             if (_videoPlayer != null)
             {
+                _videoPlayer.isLooping = false;
                 _videoPlayer.loopPointReached += OnVideoFinished;
-                // Assuming video clip is assigned in inspector or loaded from 'Assets/_Project/Videos/scar1.mp4'
                 _videoPlayer.Play();
 
                 while (_videoPlayer.isPlaying && !_isSkipped)
@@ -90,7 +99,7 @@ namespace Scar.UI_Visuals
                     yield return null;
                 }
                 
-                if (_isSkipped)
+                if (_isSkipped || _videoPlayer.isPlaying)
                 {
                     _videoPlayer.Stop();
                 }
@@ -103,7 +112,12 @@ namespace Scar.UI_Visuals
 
         private void OnVideoFinished(VideoPlayer vp)
         {
-            // Allowed to naturally fall through
+            _isSkipped = true; // Natural completion moves forward
+        }
+
+        public void OnCutsceneFinished(VideoPlayer vp)
+        {
+            _isSkipped = true;
         }
 
         private void SkipCutscene()
@@ -115,16 +129,18 @@ namespace Scar.UI_Visuals
         {
             if (_skipPromptOverlay != null) _skipPromptOverlay.SetActive(false);
 
+            // 1. Hide & Fade out video canvas
             if (_cutsceneCanvasGroup != null)
             {
-                yield return StartCoroutine(FadeCanvasGroup(_cutsceneCanvasGroup, 1f, 0f, 0.5f));
+                yield return StartCoroutine(FadeCanvasGroup(_cutsceneCanvasGroup, 1f, 0f, 0.35f));
+                _cutsceneCanvasGroup.alpha = 0f;
                 _cutsceneCanvasGroup.gameObject.SetActive(false);
             }
 
             if (_lobbyCanvas != null) _lobbyCanvas.SetActive(false);
             if (_gameplayCanvas != null) _gameplayCanvas.SetActive(true);
 
-            // Step 2: Fade to 3D Scene / Spawn Character so camera can align
+            // 2. Fade to 3D Scene / Spawn Character so camera can align
             if (LevelManager.Instance != null)
             {
                 LevelManager.Instance.SpawnCharacter(characterId);
@@ -134,10 +150,10 @@ namespace Scar.UI_Visuals
                 Debug.Log($"[Round1CutsceneController] TransitionToGameplay: LevelManager.Instance.SpawnCharacter({characterId})");
             }
 
-            // Step 3: "ROUND 1" Announcement Overlay
+            // 3. "ROUND 1 — FIND THE FOUR" Announcement Splash Sequence
             yield return StartCoroutine(PlayRound1Announcement());
 
-            // Step 4: Game Start / HUD Boot
+            // 4. Game Start / HUD Boot
             OnCutsceneFinished(characterId);
 
             _isPlaying = false;
@@ -145,52 +161,64 @@ namespace Scar.UI_Visuals
 
         private IEnumerator PlayRound1Announcement()
         {
-            // Dynamically create a "ROUND 1" banner text overlay for the sequence
-            GameObject bannerObj = new GameObject("Round1_Banner", typeof(RectTransform), typeof(TextMeshProUGUI));
+            // Dynamically create the stylized "ROUND 1 — FIND THE FOUR" banner matching reference art
+            GameObject bannerObj = new GameObject("Round1_Banner", typeof(RectTransform), typeof(CanvasGroup));
             bannerObj.transform.SetParent(this.transform, false);
-            
+
             RectTransform rt = bannerObj.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 0.5f);
             rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(800, 200);
-            
-            TextMeshProUGUI text = bannerObj.GetComponent<TextMeshProUGUI>();
-            text.text = "ROUND 1";
-            text.fontSize = 120;
-            text.fontStyle = FontStyles.Bold | FontStyles.Italic;
-            text.alignment = TextAlignmentOptions.Center;
-            text.color = new Color(1f, 0.1f, 0.1f, 0f); // Neon Red, start transparent
+            rt.sizeDelta = new Vector2(900, 260);
+
+            CanvasGroup cg = bannerObj.GetComponent<CanvasGroup>();
+            cg.alpha = 0f;
+
+            // Title Text: ROUND 1 (Cyan & Orange)
+            GameObject titleObj = new GameObject("TitleText", typeof(RectTransform), typeof(TextMeshProUGUI));
+            titleObj.transform.SetParent(bannerObj.transform, false);
+            TextMeshProUGUI titleText = titleObj.GetComponent<TextMeshProUGUI>();
+            titleText.text = "<color=#00f3ff>ROUND</color> <color=#ff8800>1</color>";
+            titleText.fontSize = 115;
+            titleText.fontStyle = FontStyles.Bold | FontStyles.Italic;
+            titleText.alignment = TextAlignmentOptions.Center;
+
+            // Subtitle Text: FIND THE FOUR
+            GameObject subObj = new GameObject("SubText", typeof(RectTransform), typeof(TextMeshProUGUI));
+            subObj.transform.SetParent(bannerObj.transform, false);
+            RectTransform subRt = subObj.GetComponent<RectTransform>();
+            subRt.anchoredPosition = new Vector2(0, -65);
+            TextMeshProUGUI subText = subObj.GetComponent<TextMeshProUGUI>();
+            subText.text = "FIND THE FOUR";
+            subText.fontSize = 36;
+            subText.fontStyle = FontStyles.Bold;
+            subText.alignment = TextAlignmentOptions.Center;
+            subText.color = Color.white;
 
             // Sound Effect Trigger
             Debug.Log("[Audio] PlaySFX: 'Round1_Announce'");
-            // AudioManager.Instance.PlaySFX("Round1_Announce");
 
-            // Dramatic camera zoom-in/punch simulation (assuming Cinemachine)
-            if (VisualJuiceManager.Instance != null)
-            {
-                // VisualJuiceManager.Instance.AddCameraShake(0.5f, 0.5f);
-            }
-
-            // Screen-space speed-line pulse (simulated by fast scale and fade-in)
+            // Animate In (Scale & Fade)
             float elapsed = 0f;
-            while (elapsed < 0.2f)
+            while (elapsed < 0.25f)
             {
                 elapsed += Time.deltaTime;
-                text.color = new Color(1f, 0.1f, 0.1f, elapsed / 0.2f);
-                rt.localScale = Vector3.Lerp(new Vector3(2f, 2f, 2f), Vector3.one, elapsed / 0.2f);
+                float t = elapsed / 0.25f;
+                cg.alpha = t;
+                rt.localScale = Vector3.Lerp(new Vector3(1.8f, 1.8f, 1.8f), Vector3.one, t);
                 yield return null;
             }
 
-            // Hold for ~1.2 seconds
-            yield return new WaitForSeconds(1.2f);
+            // Hold for 1.1s
+            yield return new WaitForSeconds(1.1f);
 
-            // Dynamic slide-out / flash dissolve
+            // Animate Out (Flash & Dissolve)
             elapsed = 0f;
-            while (elapsed < 0.3f)
+            while (elapsed < 0.35f)
             {
                 elapsed += Time.deltaTime;
-                text.color = new Color(1f, 0.1f, 0.1f, 1f - (elapsed / 0.3f));
-                rt.localScale = Vector3.Lerp(Vector3.one, new Vector3(3f, 1f, 1f), elapsed / 0.3f);
+                float t = elapsed / 0.35f;
+                cg.alpha = 1f - t;
+                rt.localScale = Vector3.Lerp(Vector3.one, new Vector3(2.5f, 1.2f, 1f), t);
                 yield return null;
             }
 
@@ -207,7 +235,6 @@ namespace Scar.UI_Visuals
             }
             else if (_cyberHUD != null)
             {
-                // Fallback if singleton is not fully hooked up in scene
                 _cyberHUD.ActivateHUD();
                 _cyberHUD.StartDeadlineTimer(480f);
             }
