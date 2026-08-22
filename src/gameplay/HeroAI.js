@@ -169,30 +169,32 @@ export class HeroAI {
       const angle = Math.atan2(dy, dx);
 
       if (playerPath === POWER_PATH.AGGRESSIVE || playerPath === 'DESTRUCTION') {
-        // Triple beam burst against Destruction player
+        // High-contrast Triple Crimson Beam spread against aggressive players
+        if (Math.random() < 0.35) this.showDialogue("You strike with blind fury, powerless one.");
         for (let offset of [-0.3, 0, 0.3]) {
           projectiles.push({
             x: this.x,
             y: this.y,
-            vx: Math.cos(angle + offset) * 380,
-            vy: Math.sin(angle + offset) * 380,
+            vx: Math.cos(angle + offset) * 400,
+            vy: Math.sin(angle + offset) * 400,
             damage: 18,
-            radius: 5,
-            color: '#00ffff',
+            radius: 6,
+            color: '#ff0055',
             isHostile: true,
             life: 2.0
           });
         }
       } else {
-        // Focused laser beam
+        // High-contrast Piercing Cyan Lance against protective/strategic players
+        if (Math.random() < 0.35) this.showDialogue("A barrier cannot shield you from truth.");
         projectiles.push({
           x: this.x,
           y: this.y,
-          vx: Math.cos(angle) * 420,
-          vy: Math.sin(angle) * 420,
-          damage: 22,
-          radius: 7,
-          color: '#ffffff',
+          vx: Math.cos(angle) * 440,
+          vy: Math.sin(angle) * 440,
+          damage: 24,
+          radius: 8,
+          color: '#00f3ff',
           isHostile: true,
           life: 2.0
         });

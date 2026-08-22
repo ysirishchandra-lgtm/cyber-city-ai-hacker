@@ -94,8 +94,8 @@ export class CyberHUD {
     let prompt = null;
     let promptColor = '#00f3ff';
 
-    // 1. Initial Movement Prompt
-    if (!state.onboarding?.movement && this._time < 7.0) {
+    // 1. Initial Movement Prompt (fades out once moving or after 4s)
+    if (!state.onboarding?.movement && this._time < 6.0) {
       if (player.vx !== 0 || player.vy !== 0) {
         import('../core/GameState.js').then(({ gameState }) => gameState.markOnboardingLearned('movement'));
       } else {
@@ -104,8 +104,8 @@ export class CyberHUD {
       }
     }
 
-    // 2. Incoming Attack Dodge Prompt
-    const windingEnemy = gameplayState.enemies?.find(e => e.isWindingUp);
+    // 2. Incoming Attack Dodge Prompt (fades upon dodge)
+    const windingEnemy = gameplayState.enemies?.find(e => e.isAlive && e.isWindingUp);
     if (windingEnemy && !state.onboarding?.dodge) {
       prompt = '⚡ [SPACE] DODGE ROLL (INVULNERABILITY WINDOW)';
       promptColor = '#ffb700';
@@ -114,7 +114,7 @@ export class CyberHUD {
       }
     }
 
-    // 3. Melee Attack Prompt on Enemy Proximity
+    // 3. Melee Attack Prompt on Enemy Proximity (fades upon attack)
     const nearbyEnemy = gameplayState.enemies?.find(e => e.isAlive && Math.hypot(e.x - player.x, e.y - player.y) < 110);
     if (nearbyEnemy && !state.onboarding?.attack && !windingEnemy) {
       prompt = '⚔️ [LEFT CLICK] 3-HIT KATANA COMBO';
@@ -124,7 +124,7 @@ export class CyberHUD {
       }
     }
 
-    // 4. Power Activation Prompt upon Awakening
+    // 4. Power Activation Prompt upon Awakening (only if never activated)
     if (state.powerUnlocked && !state.onboarding?.power) {
       const powerKey = state.powerPath === POWER_PATH.AGGRESSIVE ? '[Q] DESTRUCTION NOVA' : (state.powerPath === POWER_PATH.PROTECTIVE ? '[Q] KINETIC BARRIER' : '[Q] CHRONO STASIS');
       prompt = `⚡ PRESS ${powerKey} TO ACTIVATE AWAKENED POWER`;
@@ -159,18 +159,19 @@ export class CyberHUD {
   _renderCombatFeedback(ctx, w, h) {
     if (typeof window === 'undefined') return;
     const gameplayState = window.__SCAR_GAMEPLAY_STATE__;
-    if (!gameplayState || !gameplayState.player) return;
+    const player = gameplayState?.player;
+    if (!gameplayState || !player) return;
 
     ctx.save();
 
-    // Execution Prompt
-    const lowHpEnemy = gameplayState.enemies?.find(e => e.health <= e.maxHealth * 0.28);
+    // Execution Prompt: Only appears within 150px of low-HP enemy
+    const lowHpEnemy = gameplayState.enemies?.find(e => e.isAlive && e.health <= e.maxHealth * 0.28 && Math.hypot(e.x - player.x, e.y - player.y) < 150);
     if (lowHpEnemy) {
       const pulse = Math.sin(this._time * 8) * 4;
       ctx.fillStyle = 'rgba(255, 0, 51, 0.9)';
       ctx.shadowColor = '#ff0033';
       ctx.shadowBlur = 16;
-      ctx.font = 'bold 16px monospace';
+      ctx.font = 'bold 15px monospace';
       ctx.textAlign = 'center';
       ctx.fillText(`⚡ [E] EXECUTE ENEMY`, w / 2, h / 2 + 50 + pulse);
     }
@@ -221,32 +222,35 @@ export class CyberHUD {
     ctx.shadowBlur = 6;
     ctx.fillRect(x, y + 44, barW * 0.75 * (state.stamina ? state.stamina / 100 : 1.0), 6);
 
-    // Real-Time Moral Path Alignment Badge
+    // Dynamic Atmospheric Soul Echo Path Indicator (Feel, Not Numbers)
     const a = state.aggressiveCount || 0;
     const p = state.protectiveCount || 0;
     const s = state.strategicCount || 0;
     const total = a + p + s;
-    let alignmentText = 'ALIGNMENT: NEUTRAL (POWERLESS)';
-    let alignColor = '#94a3b8';
+    let echoText = '✨ SOUL ECHO: POWERLESS';
+    let echoColor = '#94a3b8';
 
     if (total > 0) {
-      if (a >= p && a >= s) {
-        alignmentText = `ALIGNMENT: THE AVENGER (${Math.round((a / total) * 100)}%)`;
-        alignColor = '#ff2200';
+      if (Math.abs(a - p) <= 1 && Math.abs(p - s) <= 1 && Math.abs(a - s) <= 1 && total >= 3) {
+        echoText = '⚖️ SOUL ECHO: HARMONIOUS EQUILIBRIUM';
+        echoColor = '#ffb700';
+      } else if (a >= p && a >= s) {
+        echoText = '🔥 SOUL ECHO: WRATH ACCUMULATING';
+        echoColor = '#ff3344';
       } else if (p >= a && p >= s) {
-        alignmentText = `ALIGNMENT: THE SAVIOR (${Math.round((p / total) * 100)}%)`;
-        alignColor = '#00ff88';
+        echoText = '🛡️ SOUL ECHO: COMPASSION ENDURING';
+        echoColor = '#00ff88';
       } else {
-        alignmentText = `ALIGNMENT: THE ARBITER (${Math.round((s / total) * 100)}%)`;
-        alignColor = '#00f3ff';
+        echoText = '⚡ SOUL ECHO: LOGIC HARDENING';
+        echoColor = '#00f3ff';
       }
     }
 
-    ctx.fillStyle = alignColor;
-    ctx.shadowColor = alignColor;
-    ctx.shadowBlur = 6;
+    ctx.fillStyle = echoColor;
+    ctx.shadowColor = echoColor;
+    ctx.shadowBlur = 8;
     ctx.font = 'bold 9px monospace';
-    ctx.fillText(alignmentText, x, y + 64);
+    ctx.fillText(echoText, x, y + 64);
 
     ctx.restore();
   }

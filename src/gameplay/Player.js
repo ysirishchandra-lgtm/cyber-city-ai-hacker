@@ -383,6 +383,13 @@ export class Player {
       }
     });
 
+    if (hitAny) {
+      import('../visuals/AudioEngine.js').then(({ audioEngine }) => {
+        audioEngine.playComboPop(this.comboStep);
+        if (dodgeMul > 1.0) audioEngine.playImpact(true);
+      });
+    }
+
     return hitAny;
   }
 
