@@ -560,19 +560,17 @@ export class KaustubGameplayEngine {
           y: this.warehouseTarget.y
         });
 
-        // Trigger Awakening Transformation & Level 2 Transition according to script
-        this.triggerAwakeningAndLevel2();
+        // Celebratory audio and visual burst — no stoppage, no round 2 transition
+        import('../visuals/AudioEngine.js').then(({ audioEngine }) => {
+          audioEngine.playPowerActivation('STRATEGIC');
+        });
+        import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+          particleSystem.spawnNova(this.warehouseTarget.x, this.warehouseTarget.y, 140, '#00f3ff');
+          particleSystem.spawnDamageNumber(this.warehouseTarget.x, this.warehouseTarget.y - 30, '✓ SAFEHOUSE SECURED!', true, '#00ff88');
+        });
       }
 
       if (this.player.x > 350) {
-        KaustubAPI.npcInteracted('INFORMANT_KIRA');
-        KaustubAPI.playerEnteredArea('OLD_DISTRICT');
-      }
-
-      // If all enemies are defeated in Level 1, ensure all predecessor objectives complete so choice modal triggers
-      const deadEnemiesCount = this.enemies.filter(e => !e.isAlive).length;
-      if (deadEnemiesCount >= 3) {
-        KaustubAPI.playerEnteredArea('SAFEHOUSE_L1');
         KaustubAPI.npcInteracted('INFORMANT_KIRA');
         KaustubAPI.playerEnteredArea('OLD_DISTRICT');
       }

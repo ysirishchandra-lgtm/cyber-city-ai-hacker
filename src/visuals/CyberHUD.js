@@ -372,7 +372,7 @@ export class CyberHUD {
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const objText = isCompleted ? `${objTitle} [0m]` : `${objTitle} [${distMeters}m]`;
+    const objText = isCompleted ? 'WAREHOUSE REACHED [0m] // SECURED' : `${objTitle} [${distMeters}m]`;
     ctx.fillText(objText, x, badgeY + badgeH / 2);
 
     // 3D Directional Compass Needle Indicator

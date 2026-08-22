@@ -236,35 +236,7 @@ class GameManager {
   _onMissionCompleted(missionId) {
     // Special triggers for story beats
     if (missionId === 'M1_POWER_AWAKENING') {
-      choiceSystem.presentChoice('CHOICE_POWER_AWAKENING');
-      if (this._renderer) {
-        const choice = choiceSystem.getPendingChoice();
-        this._renderer.showChoice(choice);
-      }
-      // After choice + aftermath dialogue: level 1 completes
-      eventBus.once(EVENTS.CHOICE_MADE, (choiceEntry) => {
-        let advanced = false;
-        const doAdvance = () => {
-          if (advanced) return;
-          advanced = true;
-          if (this._renderer) {
-            this._renderer._currentDialogue = null;
-            this._renderer._currentChoice = null;
-          }
-          eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
-        };
-
-        const option = CHOICES.flatMap(c => c.options).find(o => o.id === choiceEntry?.selected);
-        if (option?.consequences?.followUpDialogue) {
-          eventBus.once(EVENTS.DIALOGUE_COMPLETE, () => {
-            setTimeout(doAdvance, 800);
-          });
-          // Failsafe auto-advance after 3.5s in case player doesn't click dialogue
-          setTimeout(doAdvance, 3500);
-        } else {
-          setTimeout(doAdvance, 1200);
-        }
-      });
+      gameState.recordChoice('SAFEHOUSE_REACHED', 'Reached safehouse without stopping', 'PROTECTIVE');
     }
 
     if (missionId === 'M2_HERO_CONTACT') {

@@ -170,15 +170,6 @@ export class Player {
   }
 
   handleInput(keys, mousePos, camera, dt) {
-    if (KaustubAPI.isChoiceBlocking()) {
-      this.vx = 0;
-      this.vy = 0;
-      this.isMoving = false;
-      this.isSprinting = false;
-      this.locomotionState = 'IDLE';
-      return;
-    }
-
     // 1. Update Dodge State & Movement Momentum
     if (this.dodgeTimer > 0) {
       this.dodgeTimer -= dt;
@@ -302,7 +293,7 @@ export class Player {
   }
 
   attack(enemies, particleEffects) {
-    if (this.attackCooldown > 0 || KaustubAPI.isChoiceBlocking()) return false;
+    if (this.attackCooldown > 0) return false;
 
     // 3-Hit Combo Sequence: Step 1 (25 dmg) -> Step 2 (32 dmg) -> Step 3 (45 dmg finisher)
     this.comboStep = (this.comboStep % 3) + 1;
@@ -394,7 +385,7 @@ export class Player {
   }
 
   heavyAttack(enemies, particleEffects) {
-    if (this.attackCooldown > 0 || KaustubAPI.isChoiceBlocking() || this.stamina < 15) return false;
+    if (this.attackCooldown > 0 || this.stamina < 15) return false;
 
     this.stamina -= 15;
     this.attackCooldown = 0.55;
