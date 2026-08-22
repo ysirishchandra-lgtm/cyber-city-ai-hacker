@@ -110,6 +110,35 @@ export class KaustubGameplayEngine {
           return;
         }
 
+        // 3. Level 2 Trapped Civilian Rescue Check
+        if (this.currentScene === 'LEVEL_2' && this.trappedCivilians) {
+          for (let civ of this.trappedCivilians) {
+            if (!civ.rescued && Math.hypot(this.player.x - civ.x, this.player.y - civ.y) < 85) {
+              civ.rescued = true;
+              gameState.recordChoice('RESCUE_CIVILIAN', `Rescued ${civ.label} from transit rubble`, 'PROTECTIVE');
+              import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+                particleSystem.spawnDamageNumber(civ.x, civ.y - 25, 'CITIZEN RESCUED! +500 PTS', true, '#00ff88');
+                particleSystem.spawnNova(civ.x, civ.y, 120, '#00ff88');
+              });
+              import('../visuals/AudioEngine.js').then(({ audioEngine }) => {
+                audioEngine.playPowerActivation('PROTECTIVE');
+              });
+
+              // Deploy resistance ally if not already present
+              if (!this.ally) {
+                this.ally = {
+                  x: civ.x + 20,
+                  y: civ.y,
+                  isAlive: true,
+                  shootCooldown: 0,
+                  healCooldown: 3.5
+                };
+              }
+              return;
+            }
+          }
+        }
+
         KaustubAPI.npcInteracted('INFORMANT_KIRA');
         eventBus.emit(EVENTS.CLUE_DISCOVERED, { target: 'INTERACTABLE_CLUE' });
       }
@@ -228,8 +257,54 @@ export class KaustubGameplayEngine {
     this.environmentObjects.cameraHack.hacked = false;
     this.environmentObjects.explosiveBarrel.detonated = false;
     this.environmentObjects.turret.hacked = false;
-    this.ally = null;
+    this.trappedCivilians = [
+      { id: 'civ_1', x: 550, y: 420, rescued: false, label: 'TRAPPED CITIZEN' },
+      { id: 'civ_2', x: 950, y: 380, rescued: false, label: 'INJURED FIGHTER' }
+    ];
+    this._level2Transitioning = false;
     this.exportRenderState();
+  }
+
+  triggerAwakeningAndLevel2(chosenPath = null) {
+    if (this._level2Transitioning) return;
+    this._level2Transitioning = true;
+
+    // 1. Determine or unlock power path
+    const path = chosenPath || gameState.getPowerPath() || POWER_PATH.AGGRESSIVE;
+    gameState.unlockPower(path);
+    if (this.powerSystem) {
+      this.powerSystem.unlockPath(path);
+    }
+
+    // 2. Play massive Awakening Transformation VFX & SFX
+    const color = path === 'PROTECTIVE' ? '#00f3ff' : (path === 'STRATEGIC' ? '#ffb700' : '#ff0055');
+
+    import('../visuals/ShaderPipeline.js').then(({ shaderPipeline }) => {
+      shaderPipeline.triggerFlash(color, 0.7);
+      shaderPipeline.triggerGlitch(0.85);
+      shaderPipeline.addShake(1.0);
+    });
+
+    import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+      particleSystem.spawnNova(this.player.x, this.player.y, 220, color);
+      particleSystem.spawnImpact(this.player.x, this.player.y, color, 45);
+      particleSystem.spawnDamageNumber(this.player.x, this.player.y - 45, `⚡ POWER AWAKENED: ${path}! ⚡`, true, color);
+    });
+
+    import('../visuals/AudioEngine.js').then(({ audioEngine }) => {
+      audioEngine.playPowerActivation(path);
+    });
+
+    // 3. Emit events to sync state machine
+    eventBus.emit(EVENTS.POWER_AWAKENED, { path });
+
+    // 4. Smooth transition into Level 2 after transformation moment
+    setTimeout(() => {
+      this.setScene('LEVEL_2');
+      eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
+      eventBus.emit(EVENTS.LEVEL_STARTED, { level: 2 });
+      this._level2Transitioning = false;
+    }, 1200);
   }
 
   setScene(sceneName) {
@@ -267,16 +342,25 @@ export class KaustubGameplayEngine {
   }
 
   setupLevel2() {
-    this.player.x = 200;
-    this.player.y = 300;
+    this.player.reset(200, 300);
+    gameState.setPhase(GAME_PHASE.LEVEL_2);
+    if (!gameState.hasPower()) {
+      gameState.unlockPower(POWER_PATH.AGGRESSIVE);
+    }
+
     this.enemies = [
-      new Enemy('enforcer_1', 600, 200, ENEMY_TYPES.ENFORCER),
+      new Enemy('enforcer_1', 500, 220, ENEMY_TYPES.ENFORCER),
       new Enemy('stalker_1', 750, 400, ENEMY_TYPES.STALKER),
-      new Enemy('disruptor_1', 900, 300, ENEMY_TYPES.DISRUPTOR),
-      new Enemy('stalker_2', 1050, 500, ENEMY_TYPES.STALKER)
+      new Enemy('disruptor_1', 900, 280, ENEMY_TYPES.DISRUPTOR),
+      new Enemy('stalker_2', 1050, 480, ENEMY_TYPES.STALKER)
     ];
 
-    // Moral choice gameplay consequence: Rescued civilian / Resistance Ally appears
+    this.trappedCivilians = [
+      { id: 'civ_1', x: 550, y: 420, rescued: false, label: 'TRAPPED CITIZEN' },
+      { id: 'civ_2', x: 950, y: 380, rescued: false, label: 'INJURED FIGHTER' }
+    ];
+
+    // Deploy Resistance Ally if Protective power path
     if (gameState.getPowerPath() === POWER_PATH.PROTECTIVE || gameState.getField('protectiveCount') > 0) {
       this.ally = {
         x: 250,
@@ -446,13 +530,8 @@ export class KaustubGameplayEngine {
           y: this.warehouseTarget.y
         });
 
-        // Trigger celebratory audio and visual burst
-        import('../visuals/AudioEngine.js').then(({ audioEngine }) => {
-          audioEngine.playPowerActivation('STRATEGIC');
-        });
-        import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
-          particleSystem.spawnNova(this.warehouseTarget.x, this.warehouseTarget.y, 140, '#00f3ff');
-        });
+        // Trigger Awakening Transformation & Level 2 Transition according to script
+        this.triggerAwakeningAndLevel2();
       }
 
       if (this.player.x > 350) {
@@ -481,8 +560,22 @@ export class KaustubGameplayEngine {
       if (this.player.x > 450) {
         KaustubAPI.playerEscapedArea('PATROL_ZONE');
       }
-      if (this.player.x > 900) {
+      if (this.player.x > 1200) {
         KaustubAPI.playerEnteredArea('ROOFTOP_MEETING');
+        // Check if player reaches rooftop exit to progress to Level 3
+        if (Math.hypot(this.player.x - 1300, this.player.y - 300) < 90 && !this._level3Transitioning) {
+          this._level3Transitioning = true;
+          import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+            particleSystem.spawnDamageNumber(this.player.x, this.player.y - 30, 'ROOFTOP SECURED! PROCEEDING TO SKYBRIDGE...', true, '#9d00ff');
+            particleSystem.spawnNova(this.player.x, this.player.y, 180, '#9d00ff');
+          });
+          setTimeout(() => {
+            this.setScene('LEVEL_3');
+            eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 2 });
+            eventBus.emit(EVENTS.LEVEL_STARTED, { level: 3 });
+            this._level3Transitioning = false;
+          }, 1500);
+        }
       }
     } else if (this.currentScene === 'LEVEL_3' || this.currentScene === 'FINAL_BATTLE') {
       if (this.player.x > 600) {
@@ -597,6 +690,8 @@ export class KaustubGameplayEngine {
         state: this.hero.state,
         dialogueText: this.hero.dialogueText
       },
+      currentScene: this.currentScene,
+      trappedCivilians: this.trappedCivilians ? this.trappedCivilians.map(c => ({ id: c.id, x: c.x, y: c.y, rescued: c.rescued, label: c.label })) : [],
       ally: this.ally ? { x: this.ally.x, y: this.ally.y, isAlive: this.ally.isAlive } : null,
       environmentObjects: this.environmentObjects,
       projectiles: this.projectiles.map(p => ({ x: p.x, y: p.y, radius: p.radius, color: p.color })),

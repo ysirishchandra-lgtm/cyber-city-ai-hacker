@@ -36,6 +36,10 @@ export class CharacterRenderer {
       t.life -= dt;
       return t.life > 0;
     });
+  _getPowerColor(powerPath) {
+    if (powerPath === 'PROTECTIVE' || powerPath === 'CYBER') return '#00f3ff';
+    if (powerPath === 'STRATEGIC' || powerPath === 'STASIS') return '#ffb700';
+    return '#ff0055'; // AGGRESSIVE / DISRUPTOR
   }
 
   // ─── Render Tactical Anime Protagonist ────────────────────────────────────

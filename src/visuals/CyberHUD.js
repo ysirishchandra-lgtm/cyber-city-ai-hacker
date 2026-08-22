@@ -306,24 +306,57 @@ export class CyberHUD {
       objTitle = 'CONFRONT ATLAS THE PRODIGY';
     }
 
-    let distMeters = 128;
+    const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : null;
+    const isLevel2 = gameplayState?.currentScene === 'LEVEL_2';
+    const isLevel3 = gameplayState?.currentScene === 'LEVEL_3' || gameplayState?.currentScene === 'FINAL_BATTLE';
+
+    let distMeters = 0;
     let isCompleted = false;
-    let angleToTarget = 0;
+    let objTitle = 'REACH THE WAREHOUSE';
 
-    if (player) {
-      const dx = targetX - player.x;
-      const dy = targetY - player.y;
-      const dist = Math.hypot(dx, dy);
-      angleToTarget = Math.atan2(dy, dx);
+    if (gameplayState && gameplayState.player) {
+      let targetX = 900;
+      let targetY = 350;
+      let targetRadius = 50;
 
-      distMeters = Math.max(0, Math.round(dist / 5.1));
-      if (dist <= 60) {
+      if (isLevel2) {
+        // In Level 2: Point to trapped civilians or rooftop station (1300, 300)
+        const unrescuedCiv = gameplayState.trappedCivilians?.find(c => !c.rescued);
+        if (unrescuedCiv) {
+          targetX = unrescuedCiv.x;
+          targetY = unrescuedCiv.y;
+          targetRadius = 60;
+          objTitle = `RESCUE ${unrescuedCiv.label} [E]`;
+        } else {
+          targetX = 1300;
+          targetY = 300;
+          targetRadius = 75;
+          objTitle = 'REACH ROOFTOP STATION';
+        }
+      } else if (isLevel3) {
+        targetX = 1800;
+        targetY = 350;
+        targetRadius = 80;
+        objTitle = 'CONFRONT PRODIGY ATLAS';
+      } else {
+        targetX = (gameplayState.warehouseTarget && gameplayState.warehouseTarget.x) || 900;
+        targetY = (gameplayState.warehouseTarget && gameplayState.warehouseTarget.y) || 350;
+        targetRadius = (gameplayState.warehouseTarget && gameplayState.warehouseTarget.radius) || 50;
+        objTitle = 'REACH THE WAREHOUSE';
+      }
+
+      const px = gameplayState.player.x;
+      const py = gameplayState.player.y;
+      const dist = Math.hypot(targetX - px, targetY - py);
+
+      distMeters = Math.max(0, Math.round((dist - targetRadius) / 5.1));
+      if (dist <= targetRadius || (gameplayState.warehouseTarget?.completed && !isLevel2 && !isLevel3)) {
         distMeters = 0;
         isCompleted = true;
       }
     }
 
-    // Tactical Cyan Hexagonal Visor Objective Badge
+    // Tactical Hexagonal Visor Objective Badge
     const badgeW = 260;
     const badgeH = 28;
     const badgeX = x - badgeW / 2;
@@ -479,25 +512,32 @@ export class CyberHUD {
 
   _renderActionAbilityDiamonds(ctx, state, startX, cy) {
     ctx.save();
+    const hasPower = state?.powerUnlocked;
+    const powerColor = (state?.powerPath === 'PROTECTIVE' || state?.powerPath === 'CYBER') ? '#00f3ff' :
+                       (state?.powerPath === 'STRATEGIC' || state?.powerPath === 'STASIS') ? '#ffb700' : '#ff0055';
+
     const abilities = [
-      { label: 'ADAPT', key: 'Q', active: state.powerUnlocked },
-      { label: 'DODGE', key: 'SPACE', active: true },
-      { label: 'FOCUS', key: 'R', active: true },
+      { label: 'ADAPT', key: 'Q', active: hasPower, color: powerColor },
+      { label: 'DODGE', key: 'SPACE', active: true, color: '#00f3ff' },
+      { label: 'EVOLVE', key: 'R', active: hasPower, color: powerColor },
     ];
 
     abilities.forEach((ab, i) => {
       const x = startX + i * 75;
       const pulse = ab.active ? Math.sin(this._time * 4 + i) * 2 : 0;
+      const abColor = ab.active ? ab.color : '#4b5563';
 
       ctx.fillStyle = 'rgba(10, 16, 28, 0.85)';
-      ctx.strokeStyle = ab.active ? '#00f3ff' : '#4b5563';
+      ctx.strokeStyle = abColor;
       ctx.lineWidth = 1.5;
+      ctx.shadowColor = abColor;
+      ctx.shadowBlur = ab.active ? 8 : 0;
       ctx.beginPath();
       ctx.arc(x, cy, 22 + pulse, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = ab.active ? '#00f3ff' : '#9ca3af';
+      ctx.fillStyle = abColor;
       ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'center';
       ctx.fillText(ab.label, x, cy - 2);

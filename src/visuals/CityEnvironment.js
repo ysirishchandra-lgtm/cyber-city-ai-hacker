@@ -701,10 +701,51 @@ export class CityEnvironment {
     ctx.textAlign = 'center';
     ctx.fillText('WAREHOUSE GATE', 1450, 145);
     ctx.restore();
+
+    // 7. Level 2 Trapped Civilians under Rubble (x: 550, y: 420) & (x: 950, y: 380)
+    if (gameplayState?.trappedCivilians) {
+      gameplayState.trappedCivilians.forEach(civ => {
+        ctx.save();
+        const pulse = Math.sin(this._time * 5) * 4;
+        
+        // Rubble Pile
+        ctx.fillStyle = '#1e293b';
+        ctx.strokeStyle = civ.rescued ? '#00ff88' : '#ffb700';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(civ.x, civ.y, 28, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Distress Beacon Ring & Rescue Prompt
+        if (!civ.rescued) {
+          ctx.strokeStyle = '#00ff88';
+          ctx.shadowColor = '#00ff88';
+          ctx.shadowBlur = 14;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(civ.x, civ.y, 35 + pulse, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.fillStyle = '#00ff88';
+          ctx.font = 'bold 10px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(`[E] RESCUE ${civ.label}`, civ.x, civ.y - 45 + pulse * 0.5);
+        } else {
+          ctx.fillStyle = '#00ff88';
+          ctx.font = 'bold 9px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('✓ SECURED', civ.x, civ.y - 25);
+        }
+        ctx.restore();
+      });
+    }
   }
 
   _renderMissionWaypoints(ctx, activeObjectives = []) {
     const gameplayState = typeof window !== 'undefined' ? window.__SCAR_GAMEPLAY_STATE__ : null;
+    const isLevel2 = gameplayState?.currentScene === 'LEVEL_2';
+    const isLevel3 = gameplayState?.currentScene === 'LEVEL_3' || gameplayState?.currentScene === 'FINAL_BATTLE';
 
     const areaCoordinates = {
       'SAFEHOUSE_L1': { x: 900, y: 350, label: 'WAREHOUSE / SAFEHOUSE' },
@@ -714,10 +755,20 @@ export class CityEnvironment {
       'PATROL_ZONE': { x: 950, y: 400, label: 'PATROL ZONE' }
     };
 
-    // Always ensure Level 1 Warehouse Waypoint is visible if in Level 1
+    // Determine target based on level
     const targetsToRender = [...(activeObjectives || [])];
-    if (targetsToRender.length === 0 || !targetsToRender.some(o => o.target?.areaId === 'SAFEHOUSE_L1')) {
-      targetsToRender.push({ target: { areaId: 'SAFEHOUSE_L1' } });
+    if (isLevel2) {
+      if (!targetsToRender.some(o => o.target?.areaId === 'ROOFTOP_MEETING')) {
+        targetsToRender.push({ target: { areaId: 'ROOFTOP_MEETING' } });
+      }
+    } else if (isLevel3) {
+      if (!targetsToRender.some(o => o.target?.areaId === 'ATLAS_DISTRICT')) {
+        targetsToRender.push({ target: { areaId: 'ATLAS_DISTRICT' } });
+      }
+    } else {
+      if (!targetsToRender.some(o => o.target?.areaId === 'SAFEHOUSE_L1')) {
+        targetsToRender.push({ target: { areaId: 'SAFEHOUSE_L1' } });
+      }
     }
 
     targetsToRender.forEach(obj => {
