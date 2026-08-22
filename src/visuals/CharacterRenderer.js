@@ -678,6 +678,52 @@ export class CharacterRenderer {
       ctx.beginPath();
       ctx.arc(0, 0, 8, 0, Math.PI * 2);
       ctx.fill();
+
+    } else if (type === 'DISRUPTOR') {
+      // ─── DISRUPTOR: Floating 3D EMP Pylon Drone ───────────────────────────
+      const hoverY = Math.sin(this._time * 5 + x * 0.2) * 6;
+      ctx.translate(0, hoverY);
+
+      // Rotating Electromagnetic Hazard Rings
+      ctx.save();
+      const ring1Angle = this._time * 3.5;
+      const ring2Angle = -this._time * 2.8;
+
+      ctx.strokeStyle = '#00ffcc';
+      ctx.shadowColor = '#00ffcc';
+      ctx.shadowBlur = 16;
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 22, 9, ring1Angle, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#00f3ff';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 18, 7, ring2Angle, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Central Floating Obelisk Core
+      ctx.fillStyle = '#081c1c';
+      ctx.strokeStyle = '#00ffcc';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(0, -18);
+      ctx.lineTo(12, 0);
+      ctx.lineTo(0, 18);
+      ctx.lineTo(-12, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Pulsing Core Light
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#00ffcc';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
 
     // Mini Health Bar above Enemy
@@ -713,7 +759,35 @@ export class CharacterRenderer {
     ctx.ellipse(0, 26, 32, 14, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2. Majestic / Tyrant Energy Aura
+    // 2. 3D Hardlight Wing Blades
+    ctx.save();
+    ctx.strokeStyle = isHostile ? '#ff0055' : '#00ffff';
+    ctx.fillStyle = isHostile ? 'rgba(255, 0, 85, 0.25)' : 'rgba(0, 243, 255, 0.25)';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = isHostile ? '#ff0055' : '#00ffff';
+    ctx.shadowBlur = 18;
+
+    const wingSweep = Math.sin(this._time * 3) * 6;
+    // Left Wing
+    ctx.beginPath();
+    ctx.moveTo(-10, -10);
+    ctx.lineTo(-38 - wingSweep, -28);
+    ctx.lineTo(-24 - wingSweep, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Right Wing
+    ctx.beginPath();
+    ctx.moveTo(10, -10);
+    ctx.lineTo(38 + wingSweep, -28);
+    ctx.lineTo(24 + wingSweep, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. Majestic / Tyrant Energy Aura
     ctx.save();
     ctx.strokeStyle = heroColor;
     ctx.lineWidth = 2.5;
@@ -746,7 +820,7 @@ export class CharacterRenderer {
     }
     ctx.restore();
 
-    // 3. Regal Cloak & High-Collared Armor
+    // 4. Regal Cloak & High-Collared Armor
     ctx.fillStyle = isHostile ? '#1a0008' : '#22223a';
     ctx.beginPath();
     ctx.moveTo(-18, -18);

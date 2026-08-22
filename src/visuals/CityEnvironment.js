@@ -387,6 +387,33 @@ export class CityEnvironment {
       ctx.restore();
     }
 
+    // ─── Layer 3.5: 3D Tactical Cover Crates & Industrial Barriers ─────────
+    const crates = [
+      { x: 620, y: 240, w: 45, h: 35, color: '#1f2438', accent: '#00f3ff' },
+      { x: 920, y: 440, w: 50, h: 40, color: '#2a1f30', accent: '#ff0055' },
+      { x: 1350, y: 220, w: 60, h: 45, color: '#1a2928', accent: '#00ff88' }
+    ];
+
+    for (const crate of crates) {
+      ctx.save();
+      // Drop Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(crate.x + 4, crate.y + 4, crate.w, crate.h);
+      // Main Body
+      ctx.fillStyle = crate.color;
+      ctx.fillRect(crate.x, crate.y, crate.w, crate.h);
+      ctx.strokeStyle = crate.accent;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(crate.x, crate.y, crate.w, crate.h);
+      // Cross Bracing
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.beginPath();
+      ctx.moveTo(crate.x, crate.y); ctx.lineTo(crate.x + crate.w, crate.y + crate.h);
+      ctx.moveTo(crate.x + crate.w, crate.y); ctx.lineTo(crate.x, crate.y + crate.h);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // ─── Layer 4: Interactable Objects, Clues, Hazards & Landmarks ─────────
     this._renderWorldInteractables(ctx);
 
