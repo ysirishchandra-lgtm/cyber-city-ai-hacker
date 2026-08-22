@@ -539,6 +539,14 @@ export class KaustubGameplayEngine {
         KaustubAPI.playerEnteredArea('OLD_DISTRICT');
       }
 
+      // If all enemies are defeated in Level 1, ensure all predecessor objectives complete so choice modal triggers
+      const deadEnemiesCount = this.enemies.filter(e => !e.isAlive).length;
+      if (deadEnemiesCount >= 3) {
+        KaustubAPI.playerEnteredArea('SAFEHOUSE_L1');
+        KaustubAPI.npcInteracted('INFORMANT_KIRA');
+        KaustubAPI.playerEnteredArea('OLD_DISTRICT');
+      }
+
       // Electrical Puddle Hazard (x: 700, y: 480)
       if (Math.hypot(this.player.x - 700, this.player.y - 480) < 50) {
         if (Math.random() < 0.08) {
@@ -560,22 +568,10 @@ export class KaustubGameplayEngine {
       if (this.player.x > 450) {
         KaustubAPI.playerEscapedArea('PATROL_ZONE');
       }
-      if (this.player.x > 1200) {
+      if (this.player.x > 800) {
+        KaustubAPI.playerEscapedArea('PATROL_ZONE');
         KaustubAPI.playerEnteredArea('ROOFTOP_MEETING');
-        // Check if player reaches rooftop exit to progress to Level 3
-        if (Math.hypot(this.player.x - 1300, this.player.y - 300) < 90 && !this._level3Transitioning) {
-          this._level3Transitioning = true;
-          import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
-            particleSystem.spawnDamageNumber(this.player.x, this.player.y - 30, 'ROOFTOP SECURED! PROCEEDING TO SKYBRIDGE...', true, '#9d00ff');
-            particleSystem.spawnNova(this.player.x, this.player.y, 180, '#9d00ff');
-          });
-          setTimeout(() => {
-            this.setScene('LEVEL_3');
-            eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 2 });
-            eventBus.emit(EVENTS.LEVEL_STARTED, { level: 3 });
-            this._level3Transitioning = false;
-          }, 1500);
-        }
+        KaustubAPI.npcInteracted('HERO_MEETING');
       }
     } else if (this.currentScene === 'LEVEL_3' || this.currentScene === 'FINAL_BATTLE') {
       if (this.player.x > 600) {

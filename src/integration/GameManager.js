@@ -243,17 +243,26 @@ class GameManager {
       }
       // After choice + aftermath dialogue: level 1 completes
       eventBus.once(EVENTS.CHOICE_MADE, (choiceEntry) => {
+        let advanced = false;
+        const doAdvance = () => {
+          if (advanced) return;
+          advanced = true;
+          if (this._renderer) {
+            this._renderer._currentDialogue = null;
+            this._renderer._currentChoice = null;
+          }
+          eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
+        };
+
         const option = CHOICES.flatMap(c => c.options).find(o => o.id === choiceEntry?.selected);
         if (option?.consequences?.followUpDialogue) {
           eventBus.once(EVENTS.DIALOGUE_COMPLETE, () => {
-            setTimeout(() => {
-              eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
-            }, 1000);
+            setTimeout(doAdvance, 800);
           });
+          // Failsafe auto-advance after 3.5s in case player doesn't click dialogue
+          setTimeout(doAdvance, 3500);
         } else {
-          setTimeout(() => {
-            eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
-          }, 2000);
+          setTimeout(doAdvance, 1200);
         }
       });
     }
@@ -262,26 +271,40 @@ class GameManager {
       if (this._renderer) {
         this._renderer.showDialogue(DIALOGUES.d_hero_first_contact);
       }
-      eventBus.once(EVENTS.DIALOGUE_COMPLETE, () => {
+      let choicePresented = false;
+      const presentHeroChoice = () => {
+        if (choicePresented) return;
+        choicePresented = true;
         choiceSystem.presentChoice('CHOICE_HERO_OFFER');
         if (this._renderer) {
           this._renderer.showChoice(choiceSystem.getPendingChoice());
         }
         eventBus.once(EVENTS.CHOICE_MADE, (choiceEntry) => {
+          let advanced = false;
+          const doAdvanceL2 = () => {
+            if (advanced) return;
+            advanced = true;
+            if (this._renderer) {
+              this._renderer._currentDialogue = null;
+              this._renderer._currentChoice = null;
+            }
+            eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 2 });
+          };
+
           const option = CHOICES.flatMap(c => c.options).find(o => o.id === choiceEntry?.selected);
           if (option?.consequences?.followUpDialogue) {
             eventBus.once(EVENTS.DIALOGUE_COMPLETE, () => {
-              setTimeout(() => {
-                eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 2 });
-              }, 1000);
+              setTimeout(doAdvanceL2, 800);
             });
+            setTimeout(doAdvanceL2, 3500);
           } else {
-            setTimeout(() => {
-              eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 2 });
-            }, 1500);
+            setTimeout(doAdvanceL2, 1200);
           }
         });
-      });
+      };
+
+      eventBus.once(EVENTS.DIALOGUE_COMPLETE, presentHeroChoice);
+      setTimeout(presentHeroChoice, 3500);
     }
 
     if (missionId === 'M3_FINAL_BATTLE') {
