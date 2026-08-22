@@ -750,9 +750,9 @@ export class CityEnvironment {
     const areaCoordinates = {
       'SAFEHOUSE_L1': { x: 900, y: 350, label: 'WAREHOUSE / SAFEHOUSE' },
       'OLD_DISTRICT': { x: 750, y: 300, label: 'OLD DISTRICT' },
-      'ROOFTOP_MEETING': { x: 1300, y: 300, label: 'ROOFTOP CONFRONTATION' },
-      'ATLAS_DISTRICT': { x: 1800, y: 350, label: 'ATLAS HEADQUARTERS' },
-      'PATROL_ZONE': { x: 950, y: 400, label: 'PATROL ZONE' }
+      'ROOFTOP_MEETING': { x: 1750, y: 300, label: 'ROOFTOP CONFRONTATION' },
+      'ATLAS_DISTRICT': { x: 2200, y: 350, label: 'ATLAS HEADQUARTERS' },
+      'PATROL_ZONE': { x: 1200, y: 400, label: 'PATROL ZONE' }
     };
 
     // Determine target based on level

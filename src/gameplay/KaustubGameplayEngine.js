@@ -276,35 +276,65 @@ export class KaustubGameplayEngine {
       this.powerSystem.unlockPath(path);
     }
 
-    // 2. Play massive Awakening Transformation VFX & SFX
+    // 2. Play massive Awakening Transformation VFX & SFX in real-time
     const color = path === 'PROTECTIVE' ? '#00f3ff' : (path === 'STRATEGIC' ? '#ffb700' : '#ff0055');
 
     import('../visuals/ShaderPipeline.js').then(({ shaderPipeline }) => {
-      shaderPipeline.triggerFlash(color, 0.7);
-      shaderPipeline.triggerGlitch(0.85);
-      shaderPipeline.addShake(1.0);
+      shaderPipeline.triggerFlash(color, 0.65);
+      shaderPipeline.triggerGlitch(0.7);
+      shaderPipeline.addShake(0.85);
     });
 
     import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
       particleSystem.spawnNova(this.player.x, this.player.y, 220, color);
-      particleSystem.spawnImpact(this.player.x, this.player.y, color, 45);
-      particleSystem.spawnDamageNumber(this.player.x, this.player.y - 45, `⚡ POWER AWAKENED: ${path}! ⚡`, true, color);
+      particleSystem.spawnImpact(this.player.x, this.player.y, color, 40);
+      particleSystem.spawnDamageNumber(this.player.x, this.player.y - 45, `⚡ POWER AWAKENED: ${path}! [Q/R READY] ⚡`, true, color);
     });
 
     import('../visuals/AudioEngine.js').then(({ audioEngine }) => {
       audioEngine.playPowerActivation(path);
     });
 
-    // 3. Emit events to sync state machine
+    // 3. Emit events to sync state machine & trigger title card banner
     eventBus.emit(EVENTS.POWER_AWAKENED, { path });
+    eventBus.emit(EVENTS.LEVEL_STARTED, { level: 2 });
 
-    // 4. Smooth transition into Level 2 after transformation moment
-    setTimeout(() => {
-      this.setScene('LEVEL_2');
-      eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 1 });
-      eventBus.emit(EVENTS.LEVEL_STARTED, { level: 2 });
-      this._level2Transitioning = false;
-    }, 1200);
+    // 4. Seamlessly transition to Level 2 without stopping or teleporting
+    this.currentScene = 'LEVEL_2';
+    gameState.setPhase(GAME_PHASE.LEVEL_2);
+
+    // Spawn Level 2 enemies ahead of the warehouse
+    this.enemies = [
+      new Enemy('enforcer_1', 1150, 280, ENEMY_TYPES.ENFORCER),
+      new Enemy('stalker_1', 1300, 420, ENEMY_TYPES.STALKER),
+      new Enemy('disruptor_1', 1450, 280, ENEMY_TYPES.DISRUPTOR),
+      new Enemy('stalker_2', 1600, 460, ENEMY_TYPES.STALKER)
+    ];
+
+    this.trappedCivilians = [
+      { id: 'civ_1', x: 1050, y: 420, rescued: false, label: 'TRAPPED CITIZEN' },
+      { id: 'civ_2', x: 1350, y: 380, rescued: false, label: 'INJURED FIGHTER' }
+    ];
+
+    // Deploy Resistance Ally if Protective power path
+    if (gameState.getPowerPath() === POWER_PATH.PROTECTIVE || gameState.getField('protectiveCount') > 0) {
+      if (!this.ally) {
+        this.ally = {
+          x: this.player.x - 40,
+          y: this.player.y,
+          isAlive: true,
+          shootCooldown: 0,
+          healCooldown: 3.5
+        };
+      }
+    }
+
+    this.hero.x = 1750;
+    this.hero.y = 300;
+    this.hero.detectPlayer(this.player);
+
+    this.exportRenderState();
+    this._level2Transitioning = false;
   }
 
   setScene(sceneName) {
@@ -341,40 +371,40 @@ export class KaustubGameplayEngine {
     this._areaTriggersChecked = {};
   }
 
-  setupLevel2() {
-    this.player.reset(200, 300);
+  setupLevel2(preservePosition = false) {
+    if (!preservePosition) {
+      this.player.x = 200;
+      this.player.y = 300;
+    }
     gameState.setPhase(GAME_PHASE.LEVEL_2);
     if (!gameState.hasPower()) {
       gameState.unlockPower(POWER_PATH.AGGRESSIVE);
     }
 
     this.enemies = [
-      new Enemy('enforcer_1', 500, 220, ENEMY_TYPES.ENFORCER),
-      new Enemy('stalker_1', 750, 400, ENEMY_TYPES.STALKER),
-      new Enemy('disruptor_1', 900, 280, ENEMY_TYPES.DISRUPTOR),
-      new Enemy('stalker_2', 1050, 480, ENEMY_TYPES.STALKER)
+      new Enemy('enforcer_1', 1150, 280, ENEMY_TYPES.ENFORCER),
+      new Enemy('stalker_1', 1300, 420, ENEMY_TYPES.STALKER),
+      new Enemy('disruptor_1', 1450, 280, ENEMY_TYPES.DISRUPTOR),
+      new Enemy('stalker_2', 1600, 460, ENEMY_TYPES.STALKER)
     ];
 
     this.trappedCivilians = [
-      { id: 'civ_1', x: 550, y: 420, rescued: false, label: 'TRAPPED CITIZEN' },
-      { id: 'civ_2', x: 950, y: 380, rescued: false, label: 'INJURED FIGHTER' }
+      { id: 'civ_1', x: 1050, y: 420, rescued: false, label: 'TRAPPED CITIZEN' },
+      { id: 'civ_2', x: 1350, y: 380, rescued: false, label: 'INJURED FIGHTER' }
     ];
 
     // Deploy Resistance Ally if Protective power path
     if (gameState.getPowerPath() === POWER_PATH.PROTECTIVE || gameState.getField('protectiveCount') > 0) {
       this.ally = {
-        x: 250,
-        y: 320,
+        x: this.player.x - 30,
+        y: this.player.y,
         isAlive: true,
         shootCooldown: 0,
         healCooldown: 4.0
       };
-      import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
-        particleSystem.spawnDamageNumber(this.player.x, this.player.y - 30, 'RESISTANCE ALLY DEPLOYED!', true, '#00ff88');
-      });
     }
 
-    this.hero.x = 1300;
+    this.hero.x = 1750;
     this.hero.y = 300;
     this.hero.detectPlayer(this.player);
     this._areaTriggersChecked = {};
@@ -568,10 +598,23 @@ export class KaustubGameplayEngine {
       if (this.player.x > 450) {
         KaustubAPI.playerEscapedArea('PATROL_ZONE');
       }
-      if (this.player.x > 800) {
-        KaustubAPI.playerEscapedArea('PATROL_ZONE');
+      if (this.player.x > 1600) {
         KaustubAPI.playerEnteredArea('ROOFTOP_MEETING');
         KaustubAPI.npcInteracted('HERO_MEETING');
+        // Check if player reaches rooftop exit to progress to Level 3
+        if (Math.hypot(this.player.x - 1750, this.player.y - 300) < 90 && !this._level3Transitioning) {
+          this._level3Transitioning = true;
+          import('../visuals/ParticleSystem.js').then(({ particleSystem }) => {
+            particleSystem.spawnDamageNumber(this.player.x, this.player.y - 30, 'ROOFTOP SECURED! PROCEEDING TO SKYBRIDGE...', true, '#9d00ff');
+            particleSystem.spawnNova(this.player.x, this.player.y, 180, '#9d00ff');
+          });
+          setTimeout(() => {
+            this.setScene('LEVEL_3');
+            eventBus.emit(EVENTS.LEVEL_COMPLETED, { level: 2 });
+            eventBus.emit(EVENTS.LEVEL_STARTED, { level: 3 });
+            this._level3Transitioning = false;
+          }, 1500);
+        }
       }
     } else if (this.currentScene === 'LEVEL_3' || this.currentScene === 'FINAL_BATTLE') {
       if (this.player.x > 600) {

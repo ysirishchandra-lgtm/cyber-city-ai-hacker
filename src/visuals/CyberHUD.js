@@ -309,13 +309,13 @@ export class CyberHUD {
           targetRadius = 60;
           objTitle = `RESCUE ${unrescuedCiv.label} [E]`;
         } else {
-          targetX = 1300;
+          targetX = 1750;
           targetY = 300;
           targetRadius = 75;
           objTitle = 'REACH ROOFTOP STATION';
         }
       } else if (isLevel3) {
-        targetX = 1800;
+        targetX = 2200;
         targetY = 350;
         targetRadius = 80;
         objTitle = 'CONFRONT PRODIGY ATLAS';
